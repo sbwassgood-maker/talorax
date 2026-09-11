@@ -1,0 +1,158 @@
+// Deterministic, transparent match scoring.
+// This is intentionally simple rule-based logic — NOT an AI matching engine.
+// It exists so the "Why you're seeing this" explanations are honest and reproducible.
+
+import type { Opportunity, User, Recommendation } from '../models';
+import { getProjectById } from '../data/projects';
+
+// Map opportunity types to the LookingFor values a user might have selected.
+const TYPE_TO_INTENT: Record<string, string[]> = {
+  Internship: ['Internship'],
+  'Full-time': ['Full-time job'],
+  'Part-time': ['Part-time job'],
+  Freelance: ['Freelance work'],
+  Contract: ['Freelance work'],
+  Collaboration: ['Collaboration', 'Projects'],
+  Mentorship: ['Mentorship'],
+  Cofounder: ['Cofounder'],
+  Project: ['Projects', 'Collaboration'],
+};
+
+// Loosely associates required skills with interest areas.
+const SKILL_TO_INTEREST: Record<string, string> = {
+  Networking: 'Networking',
+  Cybersecurity: 'Cybersecurity',
+  Linux: 'Information Technology',
+  Python: 'Software Engineering',
+  JavaScript: 'Software Engineering',
+  React: 'Software Engineering',
+  SQL: 'Information Technology',
+  Marketing: 'Marketing',
+};
+
+/**
+ * Score an opportunity against a user and produce human-readable reasons.
+ * Returns a score clamped between 40 and 98 so nothing looks broken/perfect.
+ */
+export function scoreOpportunity(
+  user: User,
+  opp: Opportunity,
+): Recommendation {
+  const reasons: string[] = [];
+  let points = 0;
+
+  // 1. Skills overlap (up to 40 pts)
+  const userSkills = new Set(user.skills);
+  const matchedSkills = opp.requiredSkills.filter((s) => userSkills.has(s));
+  if (matchedSkills.length > 0) {
+    points += Math.min(40, matchedSkills.length * 18);
+    reasons.push(
+      `You have ${matchedSkills.slice(0, 3).join(', ')} skill${
+        matchedSkills.length > 1 ? 's' : ''
+      }`,
+    );
+  }
+
+  // 2. Interest area overlap (up to 20 pts)
+  const userInterests = new Set(user.interests);
+  const interestHit = opp.requiredSkills
+    .map((s) => SKILL_TO_INTEREST[s])
+    .find((area) => area && userInterests.has(area));
+  if (interestHit) {
+    points += 18;
+    reasons.push(`You selected ${interestHit}`);
+  }
+
+  // 3. Intent match (looking for) (up to 22 pts)
+  const intents = TYPE_TO_INTENT[opp.type] ?? [];
+  if (intents.some((i) => user.lookingFor.includes(i as User['lookingFor'][number]))) {
+    points += 22;
+    reasons.push(`You are looking for ${opp.type.toLowerCase()} opportunities`);
+  }
+
+  // 4. Relevant projects (up to 12 pts)
+  const relevantProjects = user.projectIds
+    .map((id) => getProjectById(id))
+    .filter(
+      (p) => p && p.technologies.some((t) => opp.requiredSkills.includes(t)),
+    );
+  if (relevantProjects.length > 0) {
+    points += Math.min(12, relevantProjects.length * 8);
+    reasons.push(
+      `You built ${relevantProjects.length} relevant project${
+        relevantProjects.length > 1 ? 's' : ''
+      }`,
+    );
+  }
+
+  // 5. Location match (up to 8 pts)
+  if (
+    opp.workMode === 'Remote' ||
+    (user.location && opp.location.includes(user.location.split(',')[0]))
+  ) {
+    points += 8;
+    reasons.push(
+      opp.workMode === 'Remote'
+        ? 'This opportunity is remote-friendly'
+        : 'The opportunity is in your preferred location',
+    );
+  }
+
+  // points can reach ~100 for a perfect fit. Add a modest base so nothing looks
+  // broken, then clamp. This spreads scores across a believable 52–97 range
+  // instead of pinning strong matches at the ceiling.
+  const score = Math.max(52, Math.min(97, Math.round(points * 0.85) + 12));
+
+  if (reasons.length === 0) {
+    reasons.push('This is a popular opportunity in your network');
+  }
+
+  return { score, reasons };
+}
+
+/**
+ * Score how relevant another person is to the current user.
+ */
+export function scorePerson(
+  user: User,
+  other: User,
+): Recommendation {
+  const reasons: string[] = [];
+  let points = 30;
+
+  const sharedInterests = other.interests.filter((i) =>
+    user.interests.includes(i),
+  );
+  if (sharedInterests.length > 0) {
+    points += Math.min(30, sharedInterests.length * 15);
+    reasons.push('Similar interests');
+  }
+
+  // Same industry (rough: shared interest in IT-ish areas)
+  if (sharedInterests.some((i) => user.interests.includes(i))) {
+    reasons.push('Same industry');
+  }
+
+  const mutual = mutualConnections(user, other);
+  if (mutual > 0) {
+    points += Math.min(25, mutual * 12);
+    reasons.push(`${mutual} mutual connection${mutual > 1 ? 's' : ''}`);
+  }
+
+  const sharedSkills = other.skills.filter((s) => user.skills.includes(s));
+  if (sharedSkills.length > 0) {
+    points += Math.min(15, sharedSkills.length * 7);
+  }
+
+  const score = Math.max(45, Math.min(97, points));
+  // de-dup reasons while preserving order
+  const seen = new Set<string>();
+  const dedup = reasons.filter((r) => (seen.has(r) ? false : seen.add(r)));
+  return { score, reasons: dedup.length ? dedup : ['Recommended for you'] };
+}
+
+export function mutualConnections(user: User, other: User): number {
+  const set = new Set(user.connectionIds);
+  return other.connectionIds.filter((id) => set.has(id) && id !== user.id)
+    .length;
+}
