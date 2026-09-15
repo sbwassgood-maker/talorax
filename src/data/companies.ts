@@ -1,6 +1,7 @@
 import type { Company } from '../models';
+import { SEED_MIAMI_COMPANIES } from './miamiSeed';
 
-export const companies: Company[] = [
+const baseCompanies: Company[] = [
   {
     id: 'c-nova',
     name: 'Nova Technologies',
@@ -174,6 +175,12 @@ export const companies: Company[] = [
     followerCount: 1720,
   },
 ];
+
+// The exported list combines the original demo companies with the Miami
+// marketplace SEED companies. Seed companies remain individually identifiable
+// (source: 'Admin', verificationStatus: 'Unverified') and are defined in the
+// separate miamiSeed module so they can be swapped for real employer accounts.
+export const companies: Company[] = [...SEED_MIAMI_COMPANIES, ...baseCompanies];
 
 export const getCompanyById = (id: string): Company | undefined =>
   companies.find((c) => c.id === id);

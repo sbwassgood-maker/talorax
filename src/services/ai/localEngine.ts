@@ -10,11 +10,17 @@
 import type { AskEngine, AiBlock, AiItem, SuggestedPrompt } from './types';
 import { detectIntent } from './intent';
 import type { ID, User, Opportunity } from '../../models';
+import { isActiveOpportunity } from '../../models';
 import { getUserById, fullName, users } from '../../data/users';
 import { projects as allProjects } from '../../data/projects';
-import { opportunities as allOpportunities } from '../../data/opportunities';
+import { opportunities as seedOpportunities } from '../../data/opportunities';
 import { communities as allCommunities } from '../../data/communities';
 import { getCompanyById } from '../../data/companies';
+
+// Ask TALORAX should only ever recommend live listings — Paused/Closed/Expired/
+// Rejected/Draft/Pending are excluded (listings without a status are legacy
+// content, treated as active).
+const allOpportunities = seedOpportunities.filter((o) => isActiveOpportunity(o));
 import {
   scoreOpportunity,
   scorePerson,

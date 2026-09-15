@@ -1,6 +1,7 @@
 import type { Opportunity } from '../models';
+import { SEED_MIAMI_OPPORTUNITIES } from './miamiSeed';
 
-export const opportunities: Opportunity[] = [
+const baseOpportunities: Opportunity[] = [
   {
     id: 'o-itsupport',
     title: 'IT Support Intern',
@@ -891,6 +892,17 @@ export const opportunities: Opportunity[] = [
     teamMemberIds: ['u-priya'],
     createdAt: '2025-05-12T09:00:00Z',
   },
+];
+
+// The exported list combines the original demo opportunities with the Miami
+// marketplace SEED jobs. Seed jobs are admin-added (source: 'Admin',
+// verificationStatus: 'Unverified') and live in the separate miamiSeed module,
+// so they can be replaced/supplemented by real employer, feed, or ATS listings
+// later without changing the Opportunities system. Seed jobs are prepended so
+// the Miami marketplace is populated for the demo.
+export const opportunities: Opportunity[] = [
+  ...SEED_MIAMI_OPPORTUNITIES,
+  ...baseOpportunities,
 ];
 
 export const getOpportunityById = (id: string): Opportunity | undefined =>

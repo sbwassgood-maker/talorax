@@ -16,6 +16,7 @@ import {
   collabsThatNeedYou,
 } from '../utils/matching';
 import { getCollabById } from '../data/collabs';
+import { isActiveOpportunity } from '../models';
 import type { SkillGap } from '../models';
 
 // A small, deterministic set of "next skills" mapped to how many opportunities
@@ -35,13 +36,19 @@ export function RadarPage() {
   const { opportunities, projects, collabs } = useAppState();
   const navigate = useNavigate();
 
+  // Only live listings feed the Radar (exclude Paused/Closed/Expired/etc).
+  const activeOpps = useMemo(
+    () => opportunities.filter((o) => isActiveOpportunity(o)),
+    [opportunities],
+  );
+
   const topOpps = useMemo(() => {
     if (!user) return [];
-    return [...opportunities]
+    return [...activeOpps]
       .map((o) => ({ opp: o, rec: scoreOpportunity(user, o) }))
       .sort((a, b) => b.rec.score - a.rec.score)
       .slice(0, 4);
-  }, [opportunities, user]);
+  }, [activeOpps, user]);
 
   const peopleToMeet = useMemo(() => {
     if (!user) return [];
@@ -57,8 +64,8 @@ export function RadarPage() {
     .slice(0, 3);
 
   const needYou = useMemo(
-    () => (user ? peopleWhoNeedYou(user, projects, opportunities).slice(0, 4) : []),
-    [user, projects, opportunities],
+    () => (user ? peopleWhoNeedYou(user, projects, activeOpps).slice(0, 4) : []),
+    [user, projects, activeOpps],
   );
 
   const collabNeeds = useMemo(

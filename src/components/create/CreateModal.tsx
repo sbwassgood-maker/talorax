@@ -7,10 +7,14 @@ import type {
   Project,
   Opportunity,
   OpportunityType,
+  Seniority,
+  WorkMode,
   Collab,
   CollabCategoryGroup,
 } from '../../models';
 import { COLLAB_CATEGORIES, COLLAB_GROUP_ICON } from '../../data/collabs';
+import { INDUSTRY_NAMES } from '../../data/industries';
+import { getActiveMarkets } from '../../data/geo';
 
 type CreateKind =
   | 'menu'
@@ -56,9 +60,22 @@ const KIND_OPTIONS: {
 export function CreateModal({ onClose }: { onClose: () => void }) {
   const [kind, setKind] = useState<CreateKind>('menu');
   const { user } = useAuth();
-  const { addPost, addProject, addOpportunity, addCollab } = useAppState();
+  const {
+    addPost,
+    addProject,
+    addOpportunity,
+    createOpportunity,
+    addCollab,
+    companies,
+  } = useAppState();
 
   const authorId = user?.id ?? 'u-alex';
+
+  // Companies this user is authorized to post on behalf of (employer flow).
+  // If none, the opportunity form behaves exactly as before (person poster).
+  const manageableCompanies = companies.filter((c) =>
+    c.adminUserIds?.includes(authorId),
+  );
 
   const now = () => new Date().toISOString();
   const uid = (prefix: string) => `${prefix}-${Date.now()}`;
@@ -159,30 +176,77 @@ export function CreateModal({ onClose }: { onClose: () => void }) {
 
       {kind === 'opportunity' && (
         <OpportunityForm
+          companies={manageableCompanies}
           onCancel={() => setKind('menu')}
-          onSubmit={({ title, type, location, shortDescription, skills }) => {
+          onSubmit={(v) => {
+            const {
+              title,
+              type,
+              location,
+              shortDescription,
+              skills,
+              companyId,
+              industry,
+              seniority,
+              workMode,
+              neighborhood,
+              city,
+              state,
+              salaryMin,
+              salaryMax,
+            } = v;
+            const isEmployerPost = Boolean(companyId);
+            const nowIso = now();
             const opp: Opportunity = {
               id: uid('o'),
               title,
-              posterId: authorId,
+              // Employer posts are attributed to the company; personal posts to
+              // the person. Never both, preserving the existing behavior.
+              ...(isEmployerPost
+                ? { companyId }
+                : { posterId: authorId }),
               location: location || 'Remote',
-              workMode: 'Remote',
+              workMode: workMode ?? 'Remote',
               type,
+              industry: industry || undefined,
+              seniority: seniority || undefined,
+              city: city || undefined,
+              state: state || undefined,
+              neighborhood: neighborhood || undefined,
+              salaryMin: salaryMin || undefined,
+              salaryMax: salaryMax || undefined,
+              salaryPeriod: salaryMin || salaryMax ? 'year' : undefined,
               shortDescription,
               description: shortDescription,
               responsibilities: [],
               requiredSkills: skills,
-              teamMemberIds: [authorId],
-              createdAt: now(),
+              teamMemberIds: isEmployerPost ? [] : [authorId],
+              createdAt: nowIso,
+              postedAt: nowIso,
+              // New listings are Active and honestly Unverified. Employer posts
+              // carry the TALORAX Employer source; personal posts leave source
+              // unset (legacy behavior).
+              status: 'Active',
+              ...(isEmployerPost
+                ? {
+                    source: 'TALORAX Employer' as const,
+                    verificationStatus: 'Unverified' as const,
+                  }
+                : {}),
             };
-            addOpportunity(opp);
+            // Use the employer-aware createOpportunity when a company is set (it
+            // also links the listing into the company's openOpportunityIds);
+            // otherwise keep the original addOpportunity path untouched.
+            if (isEmployerPost) createOpportunity(opp);
+            else addOpportunity(opp);
             const post: Post = {
               id: uid('post'),
               authorId,
               type: 'opportunity',
               content: `New opportunity: ${title}. ${shortDescription}`,
               opportunityId: opp.id,
-              createdAt: now(),
+              ...(companyId ? { companyId } : {}),
+              createdAt: nowIso,
               likeCount: 0,
               commentCount: 0,
               shareCount: 0,
@@ -407,39 +471,114 @@ const OPP_TYPES: OpportunityType[] = [
   'Project',
 ];
 
+const SENIORITY_OPTIONS: Seniority[] = [
+  'Entry level',
+  'Mid level',
+  'Senior level',
+  'Not specified',
+];
+const WORK_MODE_OPTIONS: WorkMode[] = ['Remote', 'Hybrid', 'On-site'];
+
+interface OpportunityFormValue {
+  title: string;
+  type: OpportunityType;
+  location: string;
+  shortDescription: string;
+  skills: string[];
+  companyId?: string;
+  industry?: string;
+  seniority?: Seniority;
+  workMode?: WorkMode;
+  city?: string;
+  state?: string;
+  neighborhood?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+}
+
 function OpportunityForm({
   onCancel,
   onSubmit,
+  companies,
 }: {
   onCancel: () => void;
-  onSubmit: (v: {
-    title: string;
-    type: OpportunityType;
-    location: string;
-    shortDescription: string;
-    skills: string[];
-  }) => void;
+  onSubmit: (v: OpportunityFormValue) => void;
+  // Companies the current user may post on behalf of (employer flow). When
+  // empty, the form is exactly the original personal opportunity form.
+  companies: { id: string; name: string }[];
 }) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState<OpportunityType>('Internship');
   const [location, setLocation] = useState('');
   const [shortDescription, setShortDescription] = useState('');
   const [skills, setSkills] = useState('');
+
+  // Employer / job fields (all optional; only shown when relevant).
+  const [companyId, setCompanyId] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [seniority, setSeniority] = useState<Seniority>('Not specified');
+  const [workMode, setWorkMode] = useState<WorkMode>('On-site');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [salaryMin, setSalaryMin] = useState('');
+  const [salaryMax, setSalaryMax] = useState('');
+
+  const activeMarkets = getActiveMarkets();
+  const postingAsEmployer = Boolean(companyId);
+  // Derive market/neighborhood options from the selected location's market, if
+  // it maps to an active market (Miami-first, but not hard-coded).
+  const marketForNeighborhood =
+    activeMarkets.find((m) =>
+      location.toLowerCase().includes(m.city.toLowerCase()),
+    ) ?? activeMarkets[0];
+
   const valid = title.trim() && shortDescription.trim();
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (valid)
-          onSubmit({
-            title: title.trim(),
-            type,
-            location: location.trim(),
-            shortDescription: shortDescription.trim(),
-            skills: csv(skills),
-          });
+        if (!valid) return;
+        const market = marketForNeighborhood;
+        onSubmit({
+          title: title.trim(),
+          type,
+          location: location.trim(),
+          shortDescription: shortDescription.trim(),
+          skills: csv(skills),
+          companyId: companyId || undefined,
+          industry: industry || undefined,
+          seniority: seniority !== 'Not specified' ? seniority : undefined,
+          workMode,
+          neighborhood: neighborhood || undefined,
+          // Populate structured city/state from the matched active market when
+          // a neighborhood was chosen, so employer posts are marketplace-ready.
+          city: neighborhood && market ? market.city : undefined,
+          state: neighborhood && market ? market.stateCode : undefined,
+          salaryMin: salaryMin ? Number(salaryMin) : undefined,
+          salaryMax: salaryMax ? Number(salaryMax) : undefined,
+        });
       }}
     >
+      {companies.length > 0 && (
+        <div className="tx-field">
+          <label className="tx-label" htmlFor="opp-company">
+            Post as
+          </label>
+          <select
+            id="opp-company"
+            className="tx-select"
+            value={companyId}
+            onChange={(e) => setCompanyId(e.target.value)}
+          >
+            <option value="">Myself (personal opportunity)</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} (employer)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <TextField label="Opportunity title" value={title} onChange={setTitle} autoFocus />
       <div className="tx-field">
         <label className="tx-label" htmlFor="opp-type">
@@ -464,6 +603,115 @@ function OpportunityForm({
         onChange={setLocation}
         placeholder="Miami, FL or Remote"
       />
+
+      {/* Job details — most useful for employer job posts, optional otherwise. */}
+      {postingAsEmployer && (
+        <>
+          <div className="tx-field">
+            <label className="tx-label" htmlFor="opp-industry">
+              Industry
+            </label>
+            <select
+              id="opp-industry"
+              className="tx-select"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+            >
+              <option value="">Select an industry</option>
+              {INDUSTRY_NAMES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="tx-field">
+            <label className="tx-label" htmlFor="opp-seniority">
+              Experience level
+            </label>
+            <select
+              id="opp-seniority"
+              className="tx-select"
+              value={seniority}
+              onChange={(e) => setSeniority(e.target.value as Seniority)}
+            >
+              {SENIORITY_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="tx-field">
+            <label className="tx-label" htmlFor="opp-workmode">
+              Work arrangement
+            </label>
+            <select
+              id="opp-workmode"
+              className="tx-select"
+              value={workMode}
+              onChange={(e) => setWorkMode(e.target.value as WorkMode)}
+            >
+              {WORK_MODE_OPTIONS.map((w) => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </div>
+          {marketForNeighborhood && (
+            <div className="tx-field">
+              <label className="tx-label" htmlFor="opp-neighborhood">
+                {marketForNeighborhood.city} neighborhood (optional)
+              </label>
+              <select
+                id="opp-neighborhood"
+                className="tx-select"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+              >
+                <option value="">Any / not specified</option>
+                {marketForNeighborhood.neighborhoods.map((n) => (
+                  <option key={n.id} value={n.name}>
+                    {n.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="row" style={{ gap: 12 }}>
+            <div className="tx-field" style={{ flex: 1 }}>
+              <label className="tx-label" htmlFor="opp-salmin">
+                Salary min ($/yr)
+              </label>
+              <input
+                id="opp-salmin"
+                className="tx-input"
+                type="number"
+                inputMode="numeric"
+                value={salaryMin}
+                onChange={(e) => setSalaryMin(e.target.value)}
+                placeholder="45000"
+              />
+            </div>
+            <div className="tx-field" style={{ flex: 1 }}>
+              <label className="tx-label" htmlFor="opp-salmax">
+                Salary max ($/yr)
+              </label>
+              <input
+                id="opp-salmax"
+                className="tx-input"
+                type="number"
+                inputMode="numeric"
+                value={salaryMax}
+                onChange={(e) => setSalaryMax(e.target.value)}
+                placeholder="60000"
+              />
+            </div>
+          </div>
+        </>
+      )}
+
       <TextArea
         label="Short description"
         value={shortDescription}
@@ -475,10 +723,16 @@ function OpportunityForm({
         onChange={setSkills}
         placeholder="Networking, Linux"
       />
+      {postingAsEmployer && (
+        <p className="text-muted" style={{ fontSize: 12.5, marginTop: -4 }}>
+          Employer posts go live immediately and are labeled “Not independently
+          verified” until TALORAX verifies your account.
+        </p>
+      )}
       <FormActions
         onCancel={onCancel}
         disabled={!valid}
-        submitLabel="Post opportunity"
+        submitLabel={postingAsEmployer ? 'Post job' : 'Post opportunity'}
       />
     </form>
   );

@@ -23,3 +23,14 @@ export {
 } from './collabs';
 export { conversations } from './conversations';
 export { notifications } from './notifications';
+export {
+  MARKETS,
+  getMarketById,
+  getActiveMarkets,
+  getDefaultMarket,
+  marketLabel,
+  findMarketForLocation,
+  findNeighborhood,
+  getActiveNeighborhoods,
+} from './geo';
+export type { Market, Neighborhood, MarketStatus } from './geo';

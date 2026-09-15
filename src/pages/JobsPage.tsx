@@ -6,10 +6,11 @@ import '../components/content/content.css';
 import { Button, Card, EmptyState } from '../components/ui';
 import { OpportunityCard } from '../components/content/OpportunityCard';
 import { useAppState } from '../services/appState';
-import { isJob, JOB_TYPES } from '../models';
+import { isJob, JOB_TYPES, isActiveOpportunity } from '../models';
 import type { Opportunity, OpportunityType, Seniority, WorkMode } from '../models';
 import { getCompanyById } from '../data/companies';
 import { INDUSTRIES } from '../data/industries';
+import { getActiveMarkets, findMarketForLocation } from '../data/geo';
 
 const WORK_MODES: WorkMode[] = ['Remote', 'Hybrid', 'On-site'];
 const SENIORITIES: Seniority[] = ['Entry level', 'Mid level', 'Senior level'];
@@ -41,14 +42,25 @@ export function JobsPage() {
   const [workModes, setWorkModes] = useState<WorkMode[]>([]);
   const [salaryMin, setSalaryMin] = useState(0);
   const [dateDays, setDateDays] = useState(0);
+  // Market + neighborhood filters. Empty market = "all markets" (default).
+  const [market, setMarket] = useState('');
+  const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   // "Now" captured once via a lazy state initializer — stable across renders
   // (keeps the filter memo pure) and plenty fresh for a date-posted filter.
   const [now] = useState(() => Date.now());
 
+  const activeMarkets = useMemo(() => getActiveMarkets(), []);
+  const selectedMarket = useMemo(
+    () => activeMarkets.find((m) => m.id === market),
+    [activeMarkets, market],
+  );
+
+  // Only employment jobs that are actually live (Active/legacy + not expired).
+  // Paused, Closed, Expired, Rejected, Draft, and Pending are excluded.
   const allJobs = useMemo(
-    () => opportunities.filter(isJob),
-    [opportunities],
+    () => opportunities.filter((o) => isJob(o) && isActiveOpportunity(o, now)),
+    [opportunities, now],
   );
 
   const filtered = useMemo(() => {
@@ -68,6 +80,20 @@ export function JobsPage() {
           .toLowerCase();
         if (!haystack.includes(q)) return false;
       }
+      // Market filter: match the job's structured city/state OR its free-text
+      // location against the selected active market (Miami-first, but generic).
+      if (selectedMarket) {
+        const inMarket =
+          (job.city && job.city.toLowerCase() === selectedMarket.city.toLowerCase()) ||
+          findMarketForLocation(job.location)?.id === selectedMarket.id;
+        if (!inMarket) return false;
+        // Neighborhood sub-filter only applies within a selected market.
+        if (neighborhoods.length) {
+          const jobHood = job.neighborhood ?? '';
+          if (!neighborhoods.some((n) => n.toLowerCase() === jobHood.toLowerCase()))
+            return false;
+        }
+      }
       if (industries.length && !industries.includes(job.industry ?? '')) return false;
       if (types.length && !types.includes(job.type)) return false;
       if (seniorities.length && !seniorities.includes(job.seniority ?? ('' as Seniority)))
@@ -75,12 +101,25 @@ export function JobsPage() {
       if (workModes.length && !workModes.includes(job.workMode)) return false;
       if (salaryMin > 0 && (job.salaryMin ?? 0) < salaryMin) return false;
       if (dateDays > 0) {
-        const age = (now - new Date(job.createdAt).getTime()) / 86400000;
+        const posted = job.postedAt ?? job.createdAt;
+        const age = (now - new Date(posted).getTime()) / 86400000;
         if (age > dateDays) return false;
       }
       return true;
     });
-  }, [allJobs, query, industries, types, seniorities, workModes, salaryMin, dateDays, now]);
+  }, [
+    allJobs,
+    query,
+    industries,
+    types,
+    seniorities,
+    workModes,
+    salaryMin,
+    dateDays,
+    now,
+    selectedMarket,
+    neighborhoods,
+  ]);
 
   const hasFilters =
     industries.length ||
@@ -89,6 +128,8 @@ export function JobsPage() {
     workModes.length ||
     salaryMin > 0 ||
     dateDays > 0 ||
+    market ||
+    neighborhoods.length ||
     query.trim();
 
   const clearAll = () => {
@@ -99,6 +140,8 @@ export function JobsPage() {
     setWorkModes([]);
     setSalaryMin(0);
     setDateDays(0);
+    setMarket('');
+    setNeighborhoods([]);
   };
 
   return (
@@ -107,7 +150,8 @@ export function JobsPage() {
         <h1 style={{ fontSize: 24 }}>Jobs</h1>
         <p className="text-muted">
           Find roles across every industry — healthcare, education, trades,
-          finance, hospitality, tech, and more.
+          finance, hospitality, tech, and more. Now live in{' '}
+          {activeMarkets.map((m) => m.city).join(', ') || 'select markets'}.
         </p>
       </div>
 
@@ -145,6 +189,40 @@ export function JobsPage() {
                 </button>
               ) : null}
             </div>
+
+            <FilterGroup label="Market">
+              <select
+                className="tx-select"
+                value={market}
+                onChange={(e) => {
+                  setMarket(e.target.value);
+                  setNeighborhoods([]); // reset neighborhoods when market changes
+                }}
+                aria-label="Market"
+              >
+                <option value="">All markets</option>
+                {activeMarkets.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.city}, {m.stateCode}
+                  </option>
+                ))}
+              </select>
+            </FilterGroup>
+
+            {selectedMarket && selectedMarket.neighborhoods.length > 0 && (
+              <FilterGroup label={`${selectedMarket.city} neighborhoods`}>
+                <div style={{ maxHeight: 200, overflowY: 'auto', paddingRight: 4 }}>
+                  {selectedMarket.neighborhoods.map((n) => (
+                    <Check
+                      key={n.id}
+                      label={n.name}
+                      checked={neighborhoods.includes(n.name)}
+                      onChange={() => setNeighborhoods((l) => toggle(l, n.name))}
+                    />
+                  ))}
+                </div>
+              </FilterGroup>
+            )}
 
             <FilterGroup label="Job type">
               {JOB_TYPES.map((t) => (

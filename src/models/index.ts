@@ -100,6 +100,15 @@ export interface Company {
   logoUrl?: string;
   openOpportunityIds: ID[];
   followerCount: number;
+  // --- Marketplace foundation (all optional for back-compat) ---------------
+  /** Where this company record came from (provenance, not a trust signal). */
+  source?: OpportunitySource;
+  /** Employer verification state — independent of source. Default: Unverified. */
+  verificationStatus?: VerificationStatus;
+  /** User ids authorized to manage this company/post on its behalf. */
+  adminUserIds?: ID[];
+  /** Optional website. */
+  websiteUrl?: string;
 }
 
 export interface Community {
@@ -201,6 +210,52 @@ export type Seniority =
 
 export type WorkMode = 'Remote' | 'Hybrid' | 'On-site';
 
+// ---------------------------------------------------------------------------
+// Job lifecycle, source & verification (marketplace foundation)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lifecycle state of an opportunity/job listing. Only 'Active' listings should
+ * ever surface as live opportunities. Draft/Pending/Paused/Closed/Expired/
+ * Rejected are all non-active and must be excluded from active job/opportunity
+ * views. Optional on the model for back-compat: an opportunity WITHOUT a status
+ * is treated as active legacy content (see `isActiveOpportunity`).
+ */
+export type OpportunityStatus =
+  | 'Draft' // being composed, not submitted
+  | 'Pending' // submitted, awaiting review
+  | 'Active' // live and visible
+  | 'Paused' // temporarily hidden by the poster
+  | 'Closed' // filled or withdrawn
+  | 'Expired' // past its expiry date
+  | 'Rejected'; // failed review / not approved
+
+/**
+ * Where a listing originated. This is provenance, NOT a trust signal — a
+ * listing having a source says nothing about whether it was verified. Keep this
+ * strictly separate from `verificationStatus`.
+ */
+export type OpportunitySource =
+  | 'TALORAX Employer' // posted by an employer account on TALORAX
+  | 'Admin' // seeded/admin-added demo content
+  | 'Authorized Feed' // an employer/partner-authorized feed
+  | 'ATS Integration' // synced from an applicant tracking system
+  | 'Licensed API'; // a licensed job-data API
+
+/**
+ * Verification state of a listing/employer — deliberately independent of
+ * source. A listing must NEVER be presented as "verified" unless its
+ * verificationStatus is explicitly 'Verified'. Seed/admin data is 'Unverified'.
+ */
+export type VerificationStatus =
+  | 'Unverified' // default; no verification performed
+  | 'Pending' // verification in progress
+  | 'Verified' // employer/listing confirmed by TALORAX
+  | 'Rejected'; // verification failed
+
+/** How a salary figure should be interpreted. */
+export type SalaryPeriod = 'hour' | 'day' | 'week' | 'month' | 'year';
+
 export interface Opportunity {
   id: ID;
   title: string;
@@ -215,18 +270,77 @@ export interface Opportunity {
   seniority?: Seniority;
   /** Optional numeric salary floor (USD/yr) to power salary-range filtering. */
   salaryMin?: number;
+  /** Optional numeric salary ceiling to pair with salaryMin. */
+  salaryMax?: number;
+  /** How salaryMin/salaryMax should be read. Defaults to yearly if omitted. */
+  salaryPeriod?: SalaryPeriod;
   compensation?: string;
   shortDescription: string;
   description: string;
   responsibilities: string[];
+  /** Must-have skills. (Existing field — reused as the "required" side.) */
   requiredSkills: string[];
+  /** Optional nice-to-have skills, distinct from requiredSkills. */
+  preferredSkills?: string[];
   teamMemberIds: ID[];
   createdAt: string;
+
+  // --- Structured geography (marketplace foundation) -----------------------
+  // The existing plain-string `location` field is preserved and remains the
+  // display value. These optional structured fields let the marketplace filter
+  // and organize by market/neighborhood without breaking legacy listings.
+  /** City name, e.g. 'Miami'. Optional; falls back to parsing `location`. */
+  city?: string;
+  /** State/region code or name, e.g. 'FL'. */
+  state?: string;
+  /** Neighborhood/area within the city, e.g. 'Brickell'. */
+  neighborhood?: string;
+
+  // --- Lifecycle, provenance & verification --------------------------------
+  /** Lifecycle state. Absent => treated as active legacy content. */
+  status?: OpportunityStatus;
+  /** Where the listing came from (provenance only — NOT a trust signal). */
+  source?: OpportunitySource;
+  /** Original URL of the listing at its source, if any. */
+  sourceUrl?: string;
+  /** Where a candidate applies (external or internal). */
+  applicationUrl?: string;
+  /** When the listing was posted/published (ISO). Distinct from createdAt. */
+  postedAt?: string;
+  /** When the listing expires (ISO). Past this it is no longer active. */
+  expiresAt?: string;
+  /** Verification state — independent of `source`. Default treated as Unverified. */
+  verificationStatus?: VerificationStatus;
 }
 
 /** True when an opportunity is an employment "Job" (vs a collaboration). */
 export function isJob(opp: Opportunity): boolean {
   return JOB_TYPES.includes(opp.type);
+}
+
+/**
+ * Whether an opportunity should be presented as a live/active listing.
+ *
+ * Rules (all must hold):
+ *  - status is 'Active' OR absent (absent = legacy content predating the
+ *    lifecycle model, treated as active for back-compat);
+ *  - it has not passed its `expiresAt` date.
+ *
+ * Paused, Closed, Expired, Rejected, Draft, and Pending are never active.
+ * Pass a reference time for deterministic filtering/testing.
+ */
+export function isActiveOpportunity(opp: Opportunity, now: number = Date.now()): boolean {
+  if (opp.status && opp.status !== 'Active') return false;
+  if (opp.expiresAt && new Date(opp.expiresAt).getTime() < now) return false;
+  return true;
+}
+
+/**
+ * A listing may be shown as "verified" ONLY when explicitly verified. Source is
+ * intentionally ignored here so seed/admin/feed data is never mislabeled.
+ */
+export function isVerifiedOpportunity(opp: Opportunity): boolean {
+  return opp.verificationStatus === 'Verified';
 }
 
 // ---------------------------------------------------------------------------

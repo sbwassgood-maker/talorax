@@ -86,10 +86,14 @@ export function scoreOpportunity(
   }
 
   // 5. Location match (up to 8 pts)
-  if (
-    opp.workMode === 'Remote' ||
-    (user.location && opp.location.includes(user.location.split(',')[0]))
-  ) {
+  // Prefer structured city when present (marketplace listings), and fall back
+  // to the legacy free-text `location` substring check for older content.
+  const userCity = user.location ? user.location.split(',')[0].trim() : '';
+  const locationMatches =
+    !!userCity &&
+    ((opp.city && opp.city.toLowerCase() === userCity.toLowerCase()) ||
+      opp.location.includes(userCity));
+  if (opp.workMode === 'Remote' || locationMatches) {
     points += 8;
     reasons.push(
       opp.workMode === 'Remote'
