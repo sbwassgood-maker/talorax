@@ -122,7 +122,8 @@ export type PostType =
   | 'opportunity'
   | 'learning'
   | 'collaboration'
-  | 'video';
+  | 'video'
+  | 'collab'; // a TALORAX Collab request surfaced natively in the feed
 
 export interface Post {
   id: ID;
@@ -137,6 +138,7 @@ export interface Post {
   projectId?: ID;
   opportunityId?: ID;
   companyId?: ID;
+  collabId?: ID;
   mediaColor?: string; // used to render a lightweight visual preview
   mediaLabel?: string;
 }
@@ -250,4 +252,54 @@ export interface SkillGap {
   skill: string;
   unlocksCount: number;
   rationale: string;
+}
+
+
+// ---------------------------------------------------------------------------
+// TALORAX Collabs — social collaboration requests ("I need someone")
+// ---------------------------------------------------------------------------
+
+/**
+ * Broad, extensible category groups. New categories can be added to
+ * COLLAB_CATEGORIES (in data/collabs) without code changes — this union is a
+ * convenience type, and the data layer treats category as an open string group
+ * so the system stays extensible per the product spec.
+ */
+export type CollabCategoryGroup =
+  | 'Creator'
+  | 'Creative'
+  | 'Technology'
+  | 'Business'
+  | 'Learning'
+  | 'Projects';
+
+export interface Collab {
+  id: ID;
+  creatorId: ID;
+  title: string; // e.g. "Looking for a YouTube Editor"
+  description: string; // the social-style request body
+  categoryGroup: CollabCategoryGroup;
+  category: string; // e.g. "YouTube", "Video Editing", "Co-founder"
+  /** Skills / roles the creator is looking for (the "I need" side). */
+  lookingFor: string[];
+  location: string;
+  workMode: WorkMode;
+  budget?: string; // optional; not every collab is paid
+  timeline?: string; // e.g. "Starting this week"
+  collaboratorsNeeded: number;
+  /** Users who have expressed interest (lightweight, non-committal). */
+  interestedUserIds: ID[];
+  /** Users the creator has directly invited. */
+  invitedUserIds: ID[];
+  /** Optional link to an existing TALORAX project. */
+  projectId?: ID;
+  accentColor: string; // subtle visual accent for the collab card
+  accentLabel: string; // short cover label
+  createdAt: string;
+  // --- Future-ready workspace seam (intentionally unused in this MVP) ---
+  // A successful collab can later expand into a workspace with members, tasks,
+  // files, and milestones. Kept optional so the model is extensible now.
+  workspace?: {
+    memberIds: ID[];
+  };
 }

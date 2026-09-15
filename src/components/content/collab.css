@@ -1,0 +1,109 @@
+/* ==========================================================================
+   TALORAX Collabs — social collaboration cards
+   Distinguished from normal posts by a subtle accent bar + 🤝 COLLAB ribbon,
+   not by loud colors. Uses the shared design tokens.
+   ========================================================================== */
+
+.tx-collab {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.tx-collab__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+.tx-collab__ribbon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.tx-collab__ribbon-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--color-highlight-ink);
+  background: var(--color-highlight);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+.tx-collab__ribbon-cat {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.tx-collab__head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.tx-collab__title {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.25;
+  display: block;
+}
+.tx-collab__title:hover {
+  color: var(--color-primary-hover);
+}
+.tx-collab__meta {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  margin-top: 1px;
+}
+.tx-collab__body {
+  margin: 12px 0;
+  font-size: 15px;
+  white-space: pre-wrap;
+}
+.tx-collab__section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-faint);
+  margin-bottom: 8px;
+}
+.tx-collab__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 10px 0 4px;
+}
+.tx-collab__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+/* Collabs discovery grid */
+.tx-collab-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+/* Category filter row */
+.tx-collab-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+
+@media (max-width: 560px) {
+  .tx-collab-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -2,6 +2,30 @@ import type { Post } from '../models';
 
 export const posts: Post[] = [
   {
+    id: 'post-collab-1',
+    authorId: 'u-emily',
+    type: 'collab',
+    content:
+      "Hey TALORAX 👋 I'm starting a new YouTube series about building a startup from scratch and looking for someone to edit the videos and cut them into short-form clips.",
+    collabId: 'cl-yt-editor',
+    createdAt: '2025-05-14T10:05:00Z',
+    likeCount: 22,
+    commentCount: 6,
+    shareCount: 4,
+  },
+  {
+    id: 'post-collab-2',
+    authorId: 'u-priya',
+    type: 'collab',
+    content:
+      "We're building an AI Travel Planner in the open and looking for a React developer to shape the front-end. Great way to build real portfolio work with a friendly team.",
+    collabId: 'cl-react-dev',
+    createdAt: '2025-05-12T09:35:00Z',
+    likeCount: 37,
+    commentCount: 11,
+    shareCount: 8,
+  },
+  {
     id: 'post-1',
     authorId: 'u-alex',
     type: 'project',

@@ -157,10 +157,10 @@ export const users: User[] = [
     location: 'Austin, TX',
     about:
       'Recent design grad passionate about accessible, human-centered product design. Looking for my first full-time design role.',
-    lookingFor: ['Full-time job', 'Projects'],
-    canHelpWith: ['Design', 'Communication'],
-    skills: ['Communication', 'JavaScript'],
-    interests: ['Design', 'Software Engineering', 'Marketing'],
+    lookingFor: ['Full-time job', 'Projects', 'Collaboration'],
+    canHelpWith: ['Design', 'Graphic Design', 'Video Editing', 'Thumbnail Design'],
+    skills: ['Communication', 'JavaScript', 'Graphic Design', 'Video Editing'],
+    interests: ['Design', 'YouTube', 'Marketing'],
     education: [
       {
         id: 'ed-maya-1',
@@ -408,10 +408,10 @@ export const users: User[] = [
     location: 'New York, NY',
     about:
       'Finance student fascinated by the intersection of money and technology. Learning Python and SQL to break into FinTech.',
-    lookingFor: ['Internship', 'Learning opportunities'],
-    canHelpWith: ['Communication'],
-    skills: ['SQL', 'Python', 'Communication'],
-    interests: ['Finance', 'Business', 'Information Technology'],
+    lookingFor: ['Internship', 'Learning opportunities', 'Collaboration'],
+    canHelpWith: ['Communication', 'TikTok', 'Content creation'],
+    skills: ['SQL', 'Python', 'Communication', 'Content creation'],
+    interests: ['Finance', 'Business', 'TikTok'],
     education: [
       {
         id: 'ed-omar-1',

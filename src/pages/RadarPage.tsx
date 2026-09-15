@@ -13,7 +13,9 @@ import {
   scoreOpportunity,
   scorePerson,
   peopleWhoNeedYou,
+  collabsThatNeedYou,
 } from '../utils/matching';
+import { getCollabById } from '../data/collabs';
 import type { SkillGap } from '../models';
 
 // A small, deterministic set of "next skills" mapped to how many opportunities
@@ -30,7 +32,7 @@ function computeSkillGaps(userSkills: string[]): SkillGap[] {
 
 export function RadarPage() {
   const { user } = useAuth();
-  const { opportunities, projects } = useAppState();
+  const { opportunities, projects, collabs } = useAppState();
   const navigate = useNavigate();
 
   const topOpps = useMemo(() => {
@@ -57,6 +59,11 @@ export function RadarPage() {
   const needYou = useMemo(
     () => (user ? peopleWhoNeedYou(user, projects, opportunities).slice(0, 4) : []),
     [user, projects, opportunities],
+  );
+
+  const collabNeeds = useMemo(
+    () => (user ? collabsThatNeedYou(user, collabs).slice(0, 3) : []),
+    [user, collabs],
   );
 
   if (!user) return null;
@@ -176,6 +183,43 @@ export function RadarPage() {
                     <ICanHelpButton needId={n.needId} />
                     <ConnectButton userId={person.id} />
                   </div>
+                </div>
+              );
+            })}
+          </Card>
+        </section>
+      )}
+
+      {/* Collabs that need you — matches your "can help with" */}
+      {collabNeeds.length > 0 && (
+        <section className="tx-radar-section">
+          <h2 className="tx-section-title">Collabs that need you</h2>
+          <p className="tx-section-sub">
+            Open collabs looking for exactly what you can help with.
+          </p>
+          <Card>
+            {collabNeeds.map(({ collabId, matched }) => {
+              const collab = getCollabById(collabId);
+              if (!collab) return null;
+              const creator = getUserById(collab.creatorId);
+              return (
+                <div className="tx-radar-row" key={collabId}>
+                  <div style={{ minWidth: 0 }}>
+                    <Link to={`/collabs/${collabId}`} style={{ fontWeight: 700 }}>
+                      🤝 {collab.title}
+                    </Link>
+                    <div className="text-muted" style={{ fontSize: 13 }}>
+                      {creator ? `by ${fullName(creator)} · ` : ''}You can help with{' '}
+                      {matched.join(', ')}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => navigate(`/collabs/${collabId}`)}
+                  >
+                    View Collab
+                  </Button>
                 </div>
               );
             })}

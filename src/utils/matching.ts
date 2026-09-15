@@ -2,7 +2,7 @@
 // This is intentionally simple rule-based logic — NOT an AI matching engine.
 // It exists so the "Why you're seeing this" explanations are honest and reproducible.
 
-import type { Opportunity, User, Recommendation } from '../models';
+import type { ID, Opportunity, User, Recommendation } from '../models';
 import { getProjectById } from '../data/projects';
 
 // Map opportunity types to the LookingFor values a user might have selected.
@@ -229,4 +229,118 @@ export function peopleWhoNeedYou(
   }
 
   return results;
+}
+
+
+// ---------------------------------------------------------------------------
+// Collab matching — "Find Someone For Me".
+// Ranks REAL users by how well their stated skills / "can help with" / interests
+// overlap with a free-text collaboration request (and optional explicit skills).
+// Transparent and grounded: reasons list the actual matched terms. Never
+// invents people, skills, availability, ratings, or portfolios.
+// ---------------------------------------------------------------------------
+
+export interface CollabPersonMatch {
+  personId: ID;
+  score: number; // 0-100 relevance (only when there's real signal)
+  reasons: string[];
+}
+
+// Extract candidate keywords from a natural-language request by matching known
+// skill/interest vocabulary that actually appears in it. We only ever match
+// against real vocabulary, so we never fabricate a requirement.
+function keywordsFromText(text: string, vocabulary: string[]): string[] {
+  const lower = text.toLowerCase();
+  const found = vocabulary.filter((v) => lower.includes(v.toLowerCase()));
+  return [...new Set(found)];
+}
+
+export function matchPeopleForCollab(
+  request: string,
+  candidates: User[],
+  opts?: { extraSkills?: string[]; excludeUserId?: ID },
+): CollabPersonMatch[] {
+  // Build the vocabulary from what people actually list, so keyword detection
+  // is grounded in real data rather than a hardcoded assumption.
+  const vocab = new Set<string>();
+  candidates.forEach((c) => {
+    c.skills.forEach((s) => vocab.add(s));
+    c.canHelpWith.forEach((s) => vocab.add(s));
+    c.interests.forEach((s) => vocab.add(s));
+  });
+  const wanted = new Set<string>([
+    ...keywordsFromText(request, [...vocab]),
+    ...(opts?.extraSkills ?? []),
+  ].map((s) => s.toLowerCase()));
+
+  const results: CollabPersonMatch[] = [];
+  for (const person of candidates) {
+    if (opts?.excludeUserId && person.id === opts.excludeUserId) continue;
+
+    const reasons: string[] = [];
+    let points = 0;
+
+    const helpHits = person.canHelpWith.filter((s) => wanted.has(s.toLowerCase()));
+    if (helpHits.length) {
+      points += Math.min(50, helpHits.length * 25);
+      reasons.push(`Can help with ${helpHits.join(', ')}`);
+    }
+    const skillHits = person.skills.filter(
+      (s) => wanted.has(s.toLowerCase()) && !helpHits.includes(s),
+    );
+    if (skillHits.length) {
+      points += Math.min(35, skillHits.length * 15);
+      reasons.push(`Lists ${skillHits.join(', ')} as a skill`);
+    }
+    const interestHits = person.interests.filter((s) => wanted.has(s.toLowerCase()));
+    if (interestHits.length) {
+      points += 10;
+      reasons.push(`Interested in ${interestHits.join(', ')}`);
+    }
+    // Require at least one substantive skill/interest signal — availability
+    // alone is not a match (that would just be noise, not a real recommendation).
+    const hasRealSignal =
+      helpHits.length > 0 || skillHits.length > 0 || interestHits.length > 0;
+    if (!hasRealSignal) continue;
+
+    // Availability is a bonus reason ON TOP of a real match, never the sole one.
+    if (
+      person.lookingFor.some((l) =>
+        /collaboration|projects|freelance|part-time/i.test(l),
+      )
+    ) {
+      points += 8;
+      reasons.push('Open to collaborations');
+    }
+
+    results.push({
+      personId: person.id,
+      score: Math.max(50, Math.min(98, points + 12)),
+      reasons,
+    });
+  }
+
+  return results.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * Collabs whose "looking for" the current user can satisfy (their canHelpWith /
+ * skills). Powers a collab-flavored "People who need you".
+ */
+export function collabsThatNeedYou(
+  user: User,
+  collabs: { id: ID; creatorId: ID; lookingFor: string[] }[],
+): { collabId: ID; matched: string[] }[] {
+  const mine = new Set(
+    [...user.canHelpWith, ...user.skills].map((s) => s.toLowerCase()),
+  );
+  return collabs
+    .filter((c) => c.creatorId !== user.id)
+    .map((c) => ({
+      collabId: c.id,
+      matched: c.lookingFor.filter((r) =>
+        [...mine].some((m) => r.toLowerCase().includes(m) || m.includes(r.toLowerCase())),
+      ),
+    }))
+    .filter((x) => x.matched.length > 0);
 }

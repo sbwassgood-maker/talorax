@@ -13,11 +13,13 @@ import type {
   ConnectionStatus,
   Conversation,
   Message,
+  Collab,
 } from '../models';
 import { posts as seedPosts } from '../data/posts';
 import { projects as seedProjects } from '../data/projects';
 import { opportunities as seedOpps } from '../data/opportunities';
 import { conversations as seedConversations } from '../data/conversations';
+import { collabs as seedCollabs } from '../data/collabs';
 import { DEMO_USER_ID } from '../data/users';
 
 // Global, in-memory application state for social interactions. Backed by React
@@ -29,6 +31,7 @@ interface AppStateValue {
   projects: Project[];
   opportunities: Opportunity[];
   conversations: Conversation[];
+  collabs: Collab[];
 
   likedPostIds: Set<string>;
   savedPostIds: Set<string>;
@@ -54,6 +57,14 @@ interface AppStateValue {
   addProject: (project: Project) => void;
   addOpportunity: (opp: Opportunity) => void;
   sendMessage: (conversationId: string, text: string) => void;
+
+  // Collabs
+  addCollab: (collab: Collab) => void;
+  expressInterest: (collabId: string) => void;
+  withdrawInterest: (collabId: string) => void;
+  hasExpressedInterest: (collabId: string) => boolean;
+  inviteToCollab: (collabId: string, userId: string) => void;
+  hasInvited: (collabId: string, userId: string) => boolean;
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null);
@@ -73,6 +84,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>(seedOpps);
   const [conversations, setConversations] =
     useState<Conversation[]>(seedConversations);
+  const [collabs, setCollabs] = useState<Collab[]>(seedCollabs);
 
   const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
   const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
@@ -190,12 +202,64 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // --- Collabs ---
+  const addCollab = useCallback(
+    (collab: Collab) => setCollabs((prev) => [collab, ...prev]),
+    [],
+  );
+  const expressInterest = useCallback((collabId: string) => {
+    setCollabs((prev) =>
+      prev.map((c) =>
+        c.id === collabId && !c.interestedUserIds.includes(DEMO_USER_ID)
+          ? { ...c, interestedUserIds: [...c.interestedUserIds, DEMO_USER_ID] }
+          : c,
+      ),
+    );
+  }, []);
+  const withdrawInterest = useCallback((collabId: string) => {
+    setCollabs((prev) =>
+      prev.map((c) =>
+        c.id === collabId
+          ? {
+              ...c,
+              interestedUserIds: c.interestedUserIds.filter(
+                (id) => id !== DEMO_USER_ID,
+              ),
+            }
+          : c,
+      ),
+    );
+  }, []);
+  const hasExpressedInterest = useCallback(
+    (collabId: string) =>
+      collabs
+        .find((c) => c.id === collabId)
+        ?.interestedUserIds.includes(DEMO_USER_ID) ?? false,
+    [collabs],
+  );
+  const inviteToCollab = useCallback((collabId: string, userId: string) => {
+    setCollabs((prev) =>
+      prev.map((c) =>
+        c.id === collabId && !c.invitedUserIds.includes(userId)
+          ? { ...c, invitedUserIds: [...c.invitedUserIds, userId] }
+          : c,
+      ),
+    );
+  }, []);
+  const hasInvited = useCallback(
+    (collabId: string, userId: string) =>
+      collabs.find((c) => c.id === collabId)?.invitedUserIds.includes(userId) ??
+      false,
+    [collabs],
+  );
+
   const value = useMemo<AppStateValue>(
     () => ({
       posts,
       projects,
       opportunities,
       conversations,
+      collabs,
       likedPostIds,
       savedPostIds,
       savedOpportunityIds,
@@ -217,12 +281,19 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       addProject,
       addOpportunity,
       sendMessage,
+      addCollab,
+      expressInterest,
+      withdrawInterest,
+      hasExpressedInterest,
+      inviteToCollab,
+      hasInvited,
     }),
     [
       posts,
       projects,
       opportunities,
       conversations,
+      collabs,
       likedPostIds,
       savedPostIds,
       savedOpportunityIds,
@@ -244,6 +315,12 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       addProject,
       addOpportunity,
       sendMessage,
+      addCollab,
+      expressInterest,
+      withdrawInterest,
+      hasExpressedInterest,
+      inviteToCollab,
+      hasInvited,
     ],
   );
 

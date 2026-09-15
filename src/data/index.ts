@@ -8,5 +8,11 @@ export { projects, getProjectById } from './projects';
 export { opportunities, getOpportunityById } from './opportunities';
 export { communities, getCommunityById } from './communities';
 export { posts, getPostById } from './posts';
+export {
+  collabs,
+  getCollabById,
+  COLLAB_CATEGORIES,
+  COLLAB_GROUP_ICON,
+} from './collabs';
 export { conversations } from './conversations';
 export { notifications } from './notifications';

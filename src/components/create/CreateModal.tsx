@@ -7,9 +7,18 @@ import type {
   Project,
   Opportunity,
   OpportunityType,
+  Collab,
+  CollabCategoryGroup,
 } from '../../models';
+import { COLLAB_CATEGORIES, COLLAB_GROUP_ICON } from '../../data/collabs';
 
-type CreateKind = 'menu' | 'post' | 'project' | 'opportunity' | 'collaboration';
+type CreateKind =
+  | 'menu'
+  | 'post'
+  | 'project'
+  | 'opportunity'
+  | 'collaboration'
+  | 'collab';
 
 const KIND_OPTIONS: {
   kind: CreateKind;
@@ -31,9 +40,15 @@ const KIND_OPTIONS: {
     desc: 'Post a role or opening',
   },
   {
-    kind: 'collaboration',
+    kind: 'collab',
     emoji: '🤝',
-    title: 'Collaboration',
+    title: 'Collab',
+    desc: 'Find someone to build, create, or work with',
+  },
+  {
+    kind: 'collaboration',
+    emoji: '🧩',
+    title: 'Project collaboration',
     desc: 'Invite others to join a project',
   },
 ];
@@ -41,7 +56,7 @@ const KIND_OPTIONS: {
 export function CreateModal({ onClose }: { onClose: () => void }) {
   const [kind, setKind] = useState<CreateKind>('menu');
   const { user } = useAuth();
-  const { addPost, addProject, addOpportunity } = useAppState();
+  const { addPost, addProject, addOpportunity, addCollab } = useAppState();
 
   const authorId = user?.id ?? 'u-alex';
 
@@ -53,7 +68,8 @@ export function CreateModal({ onClose }: { onClose: () => void }) {
     post: 'Create a post',
     project: 'Showcase a project',
     opportunity: 'Post an opportunity',
-    collaboration: 'Start a collaboration',
+    collaboration: 'Start a project collaboration',
+    collab: 'Start a Collab',
   };
 
   return (
@@ -166,6 +182,56 @@ export function CreateModal({ onClose }: { onClose: () => void }) {
               type: 'opportunity',
               content: `New opportunity: ${title}. ${shortDescription}`,
               opportunityId: opp.id,
+              createdAt: now(),
+              likeCount: 0,
+              commentCount: 0,
+              shareCount: 0,
+            };
+            addPost(post);
+            onClose();
+          }}
+        />
+      )}
+
+      {kind === 'collab' && (
+        <CollabForm
+          onCancel={() => setKind('menu')}
+          onSubmit={({
+            title,
+            description,
+            categoryGroup,
+            category,
+            lookingFor,
+            budget,
+            timeline,
+            location,
+          }) => {
+            const collab: Collab = {
+              id: uid('cl'),
+              creatorId: authorId,
+              title,
+              description,
+              categoryGroup,
+              category,
+              lookingFor,
+              location: location || 'Remote',
+              workMode: 'Remote',
+              budget: budget || undefined,
+              timeline: timeline || undefined,
+              collaboratorsNeeded: 1,
+              interestedUserIds: [],
+              invitedUserIds: [],
+              accentColor: '#0aa5e0',
+              accentLabel: title.slice(0, 18),
+              createdAt: now(),
+            };
+            addCollab(collab);
+            const post: Post = {
+              id: uid('post'),
+              authorId,
+              type: 'collab',
+              content: `${description}`,
+              collabId: collab.id,
               createdAt: now(),
               likeCount: 0,
               commentCount: 0,
@@ -526,5 +592,137 @@ function TextArea({
         rows={4}
       />
     </div>
+  );
+}
+
+
+const COLLAB_GROUPS = Object.keys(COLLAB_CATEGORIES) as CollabCategoryGroup[];
+
+function CollabForm({
+  onCancel,
+  onSubmit,
+}: {
+  onCancel: () => void;
+  onSubmit: (v: {
+    title: string;
+    description: string;
+    categoryGroup: CollabCategoryGroup;
+    category: string;
+    lookingFor: string[];
+    budget: string;
+    timeline: string;
+    location: string;
+  }) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [categoryGroup, setCategoryGroup] = useState<CollabCategoryGroup>('Creator');
+  const [category, setCategory] = useState(COLLAB_CATEGORIES.Creator[0]);
+  const [lookingFor, setLookingFor] = useState('');
+  const [budget, setBudget] = useState('');
+  const [timeline, setTimeline] = useState('');
+  const [location, setLocation] = useState('');
+
+  const valid = title.trim() && description.trim() && lookingFor.trim();
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (valid)
+          onSubmit({
+            title: title.trim(),
+            description: description.trim(),
+            categoryGroup,
+            category,
+            lookingFor: csv(lookingFor),
+            budget: budget.trim(),
+            timeline: timeline.trim(),
+            location: location.trim(),
+          });
+      }}
+    >
+      <p className="text-muted" style={{ marginTop: -4, marginBottom: 14 }}>
+        Tell TALORAX who you need — it reads like a friendly request, not a job
+        post.
+      </p>
+      <TextField
+        label="Title"
+        value={title}
+        onChange={setTitle}
+        placeholder="Looking for a YouTube editor"
+        autoFocus
+      />
+      <TextArea
+        label="What are you looking for?"
+        value={description}
+        onChange={setDescription}
+      />
+
+      <div className="tx-field">
+        <label className="tx-label" htmlFor="collab-group">
+          Category
+        </label>
+        <select
+          id="collab-group"
+          className="tx-select"
+          value={categoryGroup}
+          onChange={(e) => {
+            const g = e.target.value as CollabCategoryGroup;
+            setCategoryGroup(g);
+            setCategory(COLLAB_CATEGORIES[g][0]);
+          }}
+        >
+          {COLLAB_GROUPS.map((g) => (
+            <option key={g} value={g}>
+              {COLLAB_GROUP_ICON[g]} {g}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="tx-field">
+        <label className="tx-label" htmlFor="collab-cat">
+          Type
+        </label>
+        <select
+          id="collab-cat"
+          className="tx-select"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          {COLLAB_CATEGORIES[categoryGroup].map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <TextField
+        label="Looking for (comma separated)"
+        value={lookingFor}
+        onChange={setLookingFor}
+        placeholder="Video Editing, TikTok, Thumbnail Design"
+      />
+      <TextField
+        label="Budget (optional)"
+        value={budget}
+        onChange={setBudget}
+        placeholder="$50–$100 per video"
+      />
+      <TextField
+        label="Timeline (optional)"
+        value={timeline}
+        onChange={setTimeline}
+        placeholder="Starting this week"
+      />
+      <TextField
+        label="Location"
+        value={location}
+        onChange={setLocation}
+        placeholder="Remote"
+      />
+      <FormActions onCancel={onCancel} disabled={!valid} submitLabel="Post Collab" />
+    </form>
   );
 }

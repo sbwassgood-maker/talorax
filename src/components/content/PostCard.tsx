@@ -8,6 +8,7 @@ import { getUserById, fullName } from '../../data/users';
 import { getProjectById } from '../../data/projects';
 import { getCompanyById } from '../../data/companies';
 import { getOpportunityById } from '../../data/opportunities';
+import { getCollabById } from '../../data/collabs';
 import { timeAgo, compactNumber } from '../../utils/format';
 
 import { communities } from '../../data/communities';
@@ -23,6 +24,7 @@ const TYPE_META: Record<
   learning: { label: 'Learning', tone: 'primary', icon: '🎓' },
   collaboration: { label: 'Collaboration', tone: 'success', icon: '🤝' },
   video: { label: 'Video', tone: 'primary', icon: '▶' },
+  collab: { label: 'Collab', tone: 'warning', icon: '🤝' },
 };
 
 // The social-first idea: content should lead to people, communities, and
@@ -105,6 +107,7 @@ export function PostCard({ post }: { post: Post }) {
 
       {post.projectId && <ProjectEmbed projectId={post.projectId} />}
       {post.opportunityId && <OpportunityEmbed oppId={post.opportunityId} />}
+      {post.collabId && <CollabEmbed collabId={post.collabId} />}
 
       {/* Social-first: every post opens a door to related discovery */}
       <div className="tx-post__discover">
@@ -188,6 +191,32 @@ function OpportunityEmbed({ oppId }: { oppId: string }) {
         <div className="text-muted" style={{ fontSize: 13 }}>
           {company ? `${company.name} · ` : ''}
           {opp.location} · {opp.workMode}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function CollabEmbed({ collabId }: { collabId: string }) {
+  const collab = getCollabById(collabId);
+  if (!collab) return null;
+  return (
+    <Link
+      to={`/collabs/${collab.id}`}
+      className="tx-embed"
+      style={{ display: 'block' }}
+    >
+      <div
+        className="tx-embed__banner"
+        style={{ background: collab.accentColor }}
+      >
+        🤝 {collab.accentLabel}
+      </div>
+      <div className="tx-embed__body">
+        <div className="tx-embed__label">Collab · {collab.category}</div>
+        <div style={{ fontWeight: 700, margin: '2px 0 4px' }}>{collab.title}</div>
+        <div className="text-muted" style={{ fontSize: 13 }}>
+          Looking for: {collab.lookingFor.join(' · ')}
         </div>
       </div>
     </Link>
