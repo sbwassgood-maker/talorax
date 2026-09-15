@@ -219,3 +219,64 @@
     margin-bottom: 2px;
   }
 }
+
+
+/* ---------- Ask TALORAX entry points ---------- */
+.tx-ask-pill {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-primary-soft);
+  background: var(--color-primary-softer);
+  color: var(--color-primary-hover);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.tx-ask-pill:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+/* Floating action button — primarily for mobile, where the nav is condensed */
+.tx-ask-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 78px;
+  z-index: 90;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  font-size: 24px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand-navy), var(--brand-cyan));
+  box-shadow: var(--shadow-md);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease;
+}
+.tx-ask-fab:hover {
+  transform: scale(1.05);
+}
+.tx-ask-fab:active {
+  transform: scale(0.97);
+}
+
+/* Show the pill label only when there's room; hide pill entirely on very
+   small screens where the FAB takes over. */
+@media (max-width: 720px) {
+  .tx-ask-pill__label {
+    display: none;
+  }
+  .tx-ask-fab {
+    display: flex;
+  }
+}
+@media (max-width: 400px) {
+  .tx-ask-pill {
+    display: none;
+  }
+}

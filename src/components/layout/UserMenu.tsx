@@ -70,6 +70,13 @@ export function UserMenu() {
           <button
             className="tx-usermenu__item"
             role="menuitem"
+            onClick={() => go('/ask')}
+          >
+            ✨ Ask TALORAX
+          </button>
+          <button
+            className="tx-usermenu__item"
+            role="menuitem"
             style={{ color: 'var(--color-danger)' }}
             onClick={() => {
               logout();

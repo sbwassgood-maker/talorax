@@ -15,6 +15,7 @@ import { DiscoverPage } from './pages/DiscoverPage';
 import { OpportunitiesPage } from './pages/OpportunitiesPage';
 import { OpportunityDetailPage } from './pages/OpportunityDetailPage';
 import { RadarPage } from './pages/RadarPage';
+import { AskPage } from './pages/AskPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { MessagesPage } from './pages/MessagesPage';
@@ -71,6 +72,7 @@ export default function App() {
                   element={<OpportunityDetailPage />}
                 />
                 <Route path="/radar" element={<RadarPage />} />
+                <Route path="/ask" element={<AskPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/:id" element={<ProfilePage />} />
                 <Route path="/projects/:id" element={<ProjectDetailPage />} />

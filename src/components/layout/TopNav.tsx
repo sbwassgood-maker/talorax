@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { Logo } from './Logo';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui';
@@ -14,6 +14,7 @@ const LINKS = [
 
 export function TopNav() {
   const { open } = useCreateFlow();
+  const navigate = useNavigate();
   return (
     <header className="tx-topnav">
       <div className="container tx-topnav__inner">
@@ -35,6 +36,13 @@ export function TopNav() {
           ))}
         </nav>
         <div className="tx-topnav__right">
+          <button
+            className="tx-ask-pill"
+            onClick={() => navigate('/ask')}
+            aria-label="Ask TALORAX"
+          >
+            ✨<span className="tx-ask-pill__label">&nbsp;Ask</span>
+          </button>
           <Button onClick={open} size="sm" aria-label="Create">
             +<span className="tx-topnav__create-label">&nbsp;Create</span>
           </Button>
