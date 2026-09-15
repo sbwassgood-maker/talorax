@@ -37,9 +37,15 @@ export function OpportunityCard({ opp }: { opp: Opportunity }) {
         )}
       </div>
       <div className="tx-oppcard__meta">
-        <span>📍 {opp.location}</span>
+        <span>
+          📍 {opp.neighborhood ? `${opp.neighborhood}, ` : ''}
+          {opp.location}
+        </span>
         <span>· {opp.workMode}</span>
         {opp.compensation && <span>· {opp.compensation}</span>}
+        {opp.verificationStatus === 'Verified' && (
+          <Badge tone="success">✓ Verified</Badge>
+        )}
       </div>
 
       <p className="tx-oppcard__desc">{opp.shortDescription}</p>

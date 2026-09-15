@@ -6,6 +6,7 @@ import { OpportunityCard } from '../components/content/OpportunityCard';
 import { useAuth } from '../services/auth';
 import { useAppState } from '../services/appState';
 import { scoreOpportunity } from '../utils/matching';
+import { isActiveOpportunity } from '../models';
 import type { OpportunityType } from '../models';
 
 const CATEGORIES: (OpportunityType | 'All')[] = [
@@ -27,11 +28,12 @@ export function OpportunitiesPage() {
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('All');
 
   // Rank by match score so the most relevant opportunities surface first.
+  // Only live listings appear (Paused/Closed/Expired/Rejected/Draft/Pending are
+  // excluded); listings without a status are legacy content treated as active.
   const ranked = useMemo(() => {
+    const active = opportunities.filter((o) => isActiveOpportunity(o));
     const list =
-      category === 'All'
-        ? opportunities
-        : opportunities.filter((o) => o.type === category);
+      category === 'All' ? active : active.filter((o) => o.type === category);
     if (!user) return list;
     return [...list].sort(
       (a, b) => scoreOpportunity(user, b).score - scoreOpportunity(user, a).score,

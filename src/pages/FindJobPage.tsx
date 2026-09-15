@@ -6,7 +6,7 @@ import { Button, Card, EmptyState } from '../components/ui';
 import { OpportunityCard } from '../components/content/OpportunityCard';
 import { useAuth } from '../services/auth';
 import { useAppState } from '../services/appState';
-import { isJob } from '../models';
+import { isJob, isActiveOpportunity } from '../models';
 import { matchJobsForQuery } from '../utils/matching';
 import { INDUSTRY_NAMES } from '../data/industries';
 
@@ -37,7 +37,7 @@ export function FindJobPage() {
     setSearching(true);
     setQuery(trimmed);
     window.setTimeout(() => {
-      const jobs = opportunities.filter(isJob);
+      const jobs = opportunities.filter((o) => isJob(o) && isActiveOpportunity(o));
       const matches = matchJobsForQuery(trimmed, jobs, {
         user,
         industryVocabulary: INDUSTRY_NAMES,

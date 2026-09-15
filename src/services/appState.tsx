@@ -10,6 +10,7 @@ import type {
   Post,
   Project,
   Opportunity,
+  Company,
   ConnectionStatus,
   Conversation,
   Message,
@@ -18,6 +19,7 @@ import type {
 import { posts as seedPosts } from '../data/posts';
 import { projects as seedProjects } from '../data/projects';
 import { opportunities as seedOpps } from '../data/opportunities';
+import { companies as seedCompanies } from '../data/companies';
 import { conversations as seedConversations } from '../data/conversations';
 import { collabs as seedCollabs } from '../data/collabs';
 import { DEMO_USER_ID } from '../data/users';
@@ -30,6 +32,7 @@ interface AppStateValue {
   posts: Post[];
   projects: Project[];
   opportunities: Opportunity[];
+  companies: Company[];
   conversations: Conversation[];
   collabs: Collab[];
 
@@ -58,6 +61,27 @@ interface AppStateValue {
   addOpportunity: (opp: Opportunity) => void;
   sendMessage: (conversationId: string, text: string) => void;
 
+  // --- Employer / company marketplace foundation -------------------------
+  // A thin, backend-ready CRUD surface for real employer accounts to manage a
+  // company profile and its job listings. No billing/plans — just the shapes
+  // and mutations a future API can back. `getCompany` reads live state (falls
+  // back to seed data via the data layer for anything not in state yet).
+  getCompany: (id: string) => Company | undefined;
+  /** Create a company profile; returns its id. */
+  addCompany: (company: Company) => string;
+  updateCompany: (id: string, patch: Partial<Company>) => void;
+  /** Create a job/opportunity on behalf of a company (or person). */
+  createOpportunity: (opp: Opportunity) => string;
+  updateOpportunity: (id: string, patch: Partial<Opportunity>) => void;
+  /** Temporarily hide a listing (Paused). */
+  pauseOpportunity: (id: string) => void;
+  /** Reactivate a paused listing (back to Active). */
+  resumeOpportunity: (id: string) => void;
+  /** Permanently close a listing (Closed). */
+  closeOpportunity: (id: string) => void;
+  /** Whether the given user may manage the given company. */
+  canManageCompany: (companyId: string, userId: string) => boolean;
+
   // Collabs
   addCollab: (collab: Collab) => void;
   expressInterest: (collabId: string) => void;
@@ -82,6 +106,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [posts, setPosts] = useState<Post[]>(seedPosts);
   const [projects, setProjects] = useState<Project[]>(seedProjects);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(seedOpps);
+  const [companies, setCompanies] = useState<Company[]>(seedCompanies);
   const [conversations, setConversations] =
     useState<Conversation[]>(seedConversations);
   const [collabs, setCollabs] = useState<Collab[]>(seedCollabs);
@@ -183,6 +208,73 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // --- Employer / company CRUD (marketplace foundation) ------------------
+  const getCompany = useCallback(
+    (id: string) => companies.find((c) => c.id === id),
+    [companies],
+  );
+  const addCompany = useCallback((company: Company): string => {
+    setCompanies((prev) => [company, ...prev]);
+    return company.id;
+  }, []);
+  const updateCompany = useCallback(
+    (id: string, patch: Partial<Company>) =>
+      setCompanies((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+      ),
+    [],
+  );
+  // createOpportunity mirrors addOpportunity but is the employer-facing name and
+  // also links the new listing to its company's openOpportunityIds when present.
+  const createOpportunity = useCallback((opp: Opportunity): string => {
+    setOpportunities((prev) => [opp, ...prev]);
+    if (opp.companyId) {
+      setCompanies((prev) =>
+        prev.map((c) =>
+          c.id === opp.companyId && !c.openOpportunityIds.includes(opp.id)
+            ? { ...c, openOpportunityIds: [...c.openOpportunityIds, opp.id] }
+            : c,
+        ),
+      );
+    }
+    return opp.id;
+  }, []);
+  const updateOpportunity = useCallback(
+    (id: string, patch: Partial<Opportunity>) =>
+      setOpportunities((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+      ),
+    [],
+  );
+  const pauseOpportunity = useCallback(
+    (id: string) =>
+      setOpportunities((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: 'Paused' } : o)),
+      ),
+    [],
+  );
+  const resumeOpportunity = useCallback(
+    (id: string) =>
+      setOpportunities((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: 'Active' } : o)),
+      ),
+    [],
+  );
+  const closeOpportunity = useCallback(
+    (id: string) =>
+      setOpportunities((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: 'Closed' } : o)),
+      ),
+    [],
+  );
+  const canManageCompany = useCallback(
+    (companyId: string, userId: string) => {
+      const c = companies.find((x) => x.id === companyId);
+      return Boolean(c?.adminUserIds?.includes(userId));
+    },
+    [companies],
+  );
+
   const sendMessage = useCallback((conversationId: string, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -258,6 +350,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       posts,
       projects,
       opportunities,
+      companies,
       conversations,
       collabs,
       likedPostIds,
@@ -281,6 +374,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       addProject,
       addOpportunity,
       sendMessage,
+      getCompany,
+      addCompany,
+      updateCompany,
+      createOpportunity,
+      updateOpportunity,
+      pauseOpportunity,
+      resumeOpportunity,
+      closeOpportunity,
+      canManageCompany,
       addCollab,
       expressInterest,
       withdrawInterest,
@@ -292,6 +394,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       posts,
       projects,
       opportunities,
+      companies,
       conversations,
       collabs,
       likedPostIds,
@@ -315,6 +418,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       addProject,
       addOpportunity,
       sendMessage,
+      getCompany,
+      addCompany,
+      updateCompany,
+      createOpportunity,
+      updateOpportunity,
+      pauseOpportunity,
+      resumeOpportunity,
+      closeOpportunity,
+      canManageCompany,
       addCollab,
       expressInterest,
       withdrawInterest,

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import './pages.css';
 import { Avatar, Badge, Button, Card, MatchPill, Tag } from '../components/ui';
@@ -7,12 +8,31 @@ import { useAuth } from '../services/auth';
 import { getCompanyById } from '../data/companies';
 import { getUserById, fullName } from '../data/users';
 import { scoreOpportunity } from '../utils/matching';
+import { isActiveOpportunity, isVerifiedOpportunity } from '../models';
 import { NotFoundPage } from './NotFoundPage';
+
+// Format a salary range from the structured fields, honestly (no fabrication).
+function formatSalaryRange(
+  min?: number,
+  max?: number,
+  period: string = 'year',
+): string | null {
+  if (!min && !max) return null;
+  const suffix =
+    period === 'hour' ? '/hr' : period === 'year' ? '/yr' : `/${period}`;
+  const fmt = (n: number) =>
+    period === 'hour' ? `$${n}` : `$${(n / 1000).toFixed(0)}k`;
+  if (min && max) return `${fmt(min)}–${fmt(max)}${suffix}`;
+  return `${fmt((min ?? max) as number)}+${suffix}`;
+}
 
 export function OpportunityDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  // Stable "now" captured once per mount so render stays pure (no Date.now()
+  // called directly in JSX, which the React Compiler flags).
+  const [startedAt] = useState(() => Date.now());
   const {
     opportunities,
     savedOpportunityIds,
@@ -30,6 +50,16 @@ export function OpportunityDetailPage() {
   const rec = scoreOpportunity(user, opp);
   const saved = savedOpportunityIds.has(opp.id);
   const interested = interestedOpportunityIds.has(opp.id);
+  const active = isActiveOpportunity(opp);
+  const verified = isVerifiedOpportunity(opp);
+  const isExpired =
+    opp.status === 'Expired' ||
+    (opp.expiresAt ? new Date(opp.expiresAt).getTime() < startedAt : false);
+  const salaryRange = formatSalaryRange(
+    opp.salaryMin,
+    opp.salaryMax,
+    opp.salaryPeriod ?? 'year',
+  );
 
   const team = opp.teamMemberIds
     .map((mid) => getUserById(mid))
@@ -60,10 +90,42 @@ export function OpportunityDetailPage() {
 
           <div className="tx-oppcard__meta" style={{ marginTop: 14 }}>
             <Badge tone="neutral">{opp.type}</Badge>
-            <span>📍 {opp.location}</span>
+            <span>
+              📍 {opp.neighborhood ? `${opp.neighborhood}, ` : ''}
+              {opp.location}
+            </span>
             <span>· {opp.workMode}</span>
-            {opp.compensation && <span>· 💰 {opp.compensation}</span>}
+            {(salaryRange || opp.compensation) && (
+              <span>· 💰 {salaryRange ?? opp.compensation}</span>
+            )}
+            {verified && <Badge tone="success">✓ Verified employer</Badge>}
           </div>
+
+          {!active && (
+            <div
+              className="tx-detail__section"
+              style={{
+                background: 'var(--tx-surface-2, #f4f4f5)',
+                borderRadius: 10,
+                padding: '10px 14px',
+                marginTop: 12,
+              }}
+            >
+              <strong>
+                {opp.status === 'Paused'
+                  ? 'This listing is currently paused'
+                  : opp.status === 'Closed'
+                    ? 'This listing has been closed'
+                    : isExpired
+                      ? 'This listing has expired'
+                      : 'This listing is not currently active'}
+              </strong>
+              <p className="text-muted" style={{ fontSize: 13.5, margin: '4px 0 0' }}>
+                It's no longer accepting new interest. Browse active roles on the
+                Jobs page.
+              </p>
+            </div>
+          )}
 
           <div className="tx-detail__section">
             <h3>About this opportunity</h3>
@@ -121,19 +183,36 @@ export function OpportunityDetailPage() {
             <Button
               block
               onClick={() => markInterested(opp.id)}
-              disabled={interested}
+              disabled={interested || !active}
             >
               {interested ? "✓ You're interested" : "I'm Interested"}
             </Button>
-            <Button
-              block
-              variant="secondary"
-              style={{ marginTop: 8 }}
-              onClick={() => markInterested(opp.id)}
-              disabled={interested}
-            >
-              Apply
-            </Button>
+            {opp.applicationUrl ? (
+              <a
+                href={opp.applicationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-disabled={!active}
+                style={{ display: 'block', marginTop: 8 }}
+                onClick={(e) => {
+                  if (!active) e.preventDefault();
+                }}
+              >
+                <Button block variant="secondary" disabled={!active}>
+                  Apply ↗
+                </Button>
+              </a>
+            ) : (
+              <Button
+                block
+                variant="secondary"
+                style={{ marginTop: 8 }}
+                onClick={() => markInterested(opp.id)}
+                disabled={interested || !active}
+              >
+                Apply
+              </Button>
+            )}
             <Button
               block
               variant="ghost"
@@ -142,6 +221,22 @@ export function OpportunityDetailPage() {
             >
               {saved ? '🔖 Saved' : '🔖 Save'}
             </Button>
+
+            {/* Honest provenance & verification. Source is NOT a trust signal;
+                only an explicitly Verified listing is labeled verified. */}
+            {(opp.source || opp.verificationStatus) && (
+              <div
+                className="text-muted"
+                style={{ fontSize: 12, marginTop: 12, lineHeight: 1.5 }}
+              >
+                {opp.source && <div>Source: {opp.source}</div>}
+                <div>
+                  {verified
+                    ? '✓ Verified by TALORAX'
+                    : 'Not independently verified'}
+                </div>
+              </div>
+            )}
           </Card>
 
           <WhyThis score={rec.score} reasons={rec.reasons} />
