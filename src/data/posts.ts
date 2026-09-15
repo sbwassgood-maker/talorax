@@ -25,6 +25,100 @@ export const posts: Post[] = [
     commentCount: 11,
     shareCount: 8,
   },
+
+  // --- Industry-diverse feed content (nursing, education, food, trades, ...) ---
+  {
+    id: 'post-nurse',
+    authorId: 'u-grace',
+    type: 'text',
+    content:
+      "New nurses: your first year is hard for everyone. Ask questions, write things down, and be kind to yourself. The confidence comes — I promise. Happy to mentor anyone starting out on a med-surg floor.",
+    createdAt: '2025-05-14T08:30:00Z',
+    likeCount: 142,
+    commentCount: 33,
+    shareCount: 19,
+  },
+  {
+    id: 'post-chef',
+    authorId: 'u-marco',
+    type: 'text',
+    content:
+      "Opening a new seasonal restaurant this fall and building the team now. Looking for a pastry chef and a front-of-house lead who care about hospitality as much as the food. Reach out if that's you 🍽️",
+    createdAt: '2025-05-13T17:00:00Z',
+    likeCount: 88,
+    commentCount: 21,
+    shareCount: 12,
+    mediaColor: '#d9880a',
+    mediaLabel: '🍽️ New Restaurant',
+  },
+  {
+    id: 'post-teacher',
+    authorId: 'u-daniel',
+    type: 'learning',
+    content:
+      "Tried a new approach to teaching algebra this week: less lecturing, more student-led problem solving. Engagement went way up. Fellow educators — what's working in your classrooms right now?",
+    createdAt: '2025-05-13T12:00:00Z',
+    likeCount: 96,
+    commentCount: 41,
+    shareCount: 8,
+  },
+  {
+    id: 'post-electrician',
+    authorId: 'u-terrence',
+    type: 'project',
+    content:
+      "Wrapped a full commercial rewire this week — clean runs, everything to code, zero callbacks. The trades don't get enough credit for the craftsmanship involved. Proud of my apprentice too.",
+    createdAt: '2025-05-13T09:00:00Z',
+    likeCount: 117,
+    commentCount: 15,
+    shareCount: 6,
+    mediaColor: '#101828',
+    mediaLabel: '🔨 Commercial Rewire',
+  },
+  {
+    id: 'post-accountant',
+    authorId: 'u-nina',
+    type: 'learning',
+    content:
+      "Small-business finance tip: separate your business and personal accounts from day one. It makes bookkeeping, taxes, and decisions dramatically easier. Simple, but I see it skipped constantly.",
+    createdAt: '2025-05-12T15:30:00Z',
+    likeCount: 74,
+    commentCount: 12,
+    shareCount: 22,
+  },
+  {
+    id: 'post-designer2',
+    authorId: 'u-aisha',
+    type: 'text',
+    content:
+      "Marketing isn't about shouting louder — it's about telling a true story to the right people. Looking to collaborate with a designer on a brand refresh for a local nonprofit. DM me!",
+    createdAt: '2025-05-12T11:15:00Z',
+    likeCount: 63,
+    commentCount: 18,
+    shareCount: 9,
+  },
+  {
+    id: 'post-realtor',
+    authorId: 'u-sophia',
+    type: 'text',
+    content:
+      "Helped a first-time buyer close on their home today. The look on their face is why I do this. If you're nervous about buying, it's okay to go slow and ask a hundred questions — that's my job 🏠",
+    createdAt: '2025-05-11T16:45:00Z',
+    likeCount: 104,
+    commentCount: 27,
+    shareCount: 5,
+  },
+  {
+    id: 'post-trainer',
+    authorId: 'u-tomas',
+    type: 'text',
+    content:
+      "Reminder: fitness isn't punishment for what you ate. It's a way to feel strong and capable. Start small, stay consistent, and be patient with your body. You've got this 💪",
+    createdAt: '2025-05-11T07:30:00Z',
+    likeCount: 158,
+    commentCount: 24,
+    shareCount: 31,
+  },
   {
     id: 'post-1',
     authorId: 'u-alex',

@@ -9,6 +9,13 @@ export { opportunities, getOpportunityById } from './opportunities';
 export { communities, getCommunityById } from './communities';
 export { posts, getPostById } from './posts';
 export {
+  INDUSTRIES,
+  INDUSTRY_NAMES,
+  getIndustryByName,
+  getIndustryById,
+  industryIcon,
+} from './industries';
+export {
   collabs,
   getCollabById,
   COLLAB_CATEGORIES,

@@ -7,7 +7,7 @@ import { useCreateFlow } from '../../services/createFlow';
 const LINKS = [
   { to: '/home', label: 'Home', icon: '🏠' },
   { to: '/discover', label: 'Discover', icon: '🧭' },
-  { to: '/opportunities', label: 'Opportunities', icon: '💼' },
+  { to: '/jobs', label: 'Jobs', icon: '💼' },
   { to: '/messages', label: 'Messages', icon: '✉️' },
   { to: '/profile', label: 'Profile', icon: '👤' },
 ];

@@ -38,7 +38,7 @@ export function BottomNav() {
         Create
       </button>
       <NavLink
-        to="/opportunities"
+        to="/jobs"
         className={({ isActive }) =>
           `tx-bottomnav__item${isActive ? ' tx-bottomnav__item--active' : ''}`
         }
@@ -46,7 +46,7 @@ export function BottomNav() {
         <span className="tx-bottomnav__icon" aria-hidden="true">
           💼
         </span>
-        Opps
+        Jobs
       </NavLink>
       <NavLink
         to="/profile"

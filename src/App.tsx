@@ -18,6 +18,8 @@ import { RadarPage } from './pages/RadarPage';
 import { AskPage } from './pages/AskPage';
 import { CollabDetailPage } from './pages/CollabDetailPage';
 import { FindCollabPage } from './pages/FindCollabPage';
+import { JobsPage } from './pages/JobsPage';
+import { FindJobPage } from './pages/FindJobPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { MessagesPage } from './pages/MessagesPage';
@@ -77,6 +79,8 @@ export default function App() {
                 <Route path="/ask" element={<AskPage />} />
                 <Route path="/collabs/find" element={<FindCollabPage />} />
                 <Route path="/collabs/:id" element={<CollabDetailPage />} />
+                <Route path="/jobs/find" element={<FindJobPage />} />
+                <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/:id" element={<ProfilePage />} />
                 <Route path="/projects/:id" element={<ProjectDetailPage />} />

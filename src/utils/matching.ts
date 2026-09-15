@@ -344,3 +344,171 @@ export function collabsThatNeedYou(
     }))
     .filter((x) => x.matched.length > 0);
 }
+
+
+// ---------------------------------------------------------------------------
+// "Find a Job For Me" — natural-language job discovery ACROSS ALL INDUSTRIES.
+// Deliberately does NOT restrict to the user's current field. Parses simple
+// signals from the request (location, minimum salary, work mode, industry
+// mentions, and skill/interest keywords) and ranks real jobs with transparent
+// reasons. Never fabricates jobs, companies, salaries, or requirements.
+// ---------------------------------------------------------------------------
+
+export interface JobMatch {
+  opportunityId: ID;
+  score: number;
+  reasons: string[];
+}
+
+interface ParsedJobQuery {
+  minSalary?: number;
+  workMode?: string; // 'Remote' | 'Hybrid' | 'On-site'
+  jobType?: string;
+  location?: string;
+  entryLevel: boolean;
+}
+
+// Extract a minimum salary like "$45,000", "45k", "at least 60000".
+function parseSalary(text: string): number | undefined {
+  const k = text.match(/\$?\s?(\d{2,3})\s?k\b/i);
+  if (k) return parseInt(k[1], 10) * 1000;
+  const full = text.match(/\$?\s?(\d{2,3}(?:,\d{3})+|\d{4,6})/);
+  if (full) {
+    const n = parseInt(full[1].replace(/,/g, ''), 10);
+    if (n >= 15000 && n <= 500000) return n;
+  }
+  return undefined;
+}
+
+function parseJobQuery(text: string, knownLocations: string[]): ParsedJobQuery {
+  const lower = text.toLowerCase();
+  const workMode = /remote/.test(lower)
+    ? 'Remote'
+    : /hybrid/.test(lower)
+      ? 'Hybrid'
+      : /on-?site|in person|in-person/.test(lower)
+        ? 'On-site'
+        : undefined;
+  const jobType = /part-?time/.test(lower)
+    ? 'Part-time'
+    : /full-?time/.test(lower)
+      ? 'Full-time'
+      : /internship|intern\b/.test(lower)
+        ? 'Internship'
+        : /contract/.test(lower)
+          ? 'Contract'
+          : /temporary|temp\b|seasonal/.test(lower)
+            ? 'Temporary'
+            : undefined;
+  const location = knownLocations.find((loc) => {
+    const city = loc.split(',')[0].toLowerCase();
+    return city.length > 2 && lower.includes(city);
+  });
+  const entryLevel =
+    /entry|no experience|not much experience|little experience|beginner|new to|starting out|first job/.test(
+      lower,
+    );
+  return { minSalary: parseSalary(lower), workMode, jobType, location, entryLevel };
+}
+
+export function matchJobsForQuery(
+  request: string,
+  jobs: Opportunity[],
+  opts?: {
+    user?: User;
+    industryVocabulary?: string[]; // industry names for matching mentions
+  },
+): JobMatch[] {
+  const lower = request.toLowerCase();
+  const knownLocations = [...new Set(jobs.map((j) => j.location))];
+  const parsed = parseJobQuery(request, knownLocations);
+
+  // Detect explicitly mentioned industries so a query like "work in healthcare"
+  // biases toward that field — but we still search across everything.
+  const mentionedIndustries = (opts?.industryVocabulary ?? []).filter((name) =>
+    lower.includes(name.toLowerCase().split(' ')[0]),
+  );
+
+  // Soft keyword pool from the user's own skills/interests (used as a gentle
+  // boost only — never a hard filter, so recommendations aren't limited to the
+  // user's current profession).
+  const softKeywords = new Set(
+    [
+      ...(opts?.user?.skills ?? []),
+      ...(opts?.user?.interests ?? []),
+    ].map((s) => s.toLowerCase()),
+  );
+
+  const results: JobMatch[] = [];
+  for (const job of jobs) {
+    const reasons: string[] = [];
+    let points = 40; // baseline so every real job is a candidate
+
+    if (parsed.location && job.location.includes(parsed.location.split(',')[0])) {
+      points += 18;
+      reasons.push(`In ${parsed.location.split(',')[0]}`);
+    } else if (parsed.workMode === 'Remote' && job.workMode === 'Remote') {
+      points += 14;
+      reasons.push('Remote-friendly');
+    }
+
+    if (parsed.workMode && job.workMode === parsed.workMode) {
+      points += 8;
+      if (parsed.workMode !== 'Remote') reasons.push(`${parsed.workMode}`);
+    }
+
+    if (parsed.jobType && job.type === parsed.jobType) {
+      points += 12;
+      reasons.push(`${job.type} role`);
+    }
+
+    if (parsed.minSalary && job.salaryMin) {
+      if (job.salaryMin >= parsed.minSalary) {
+        points += 16;
+        reasons.push(`Pays at least $${(parsed.minSalary / 1000).toFixed(0)}k`);
+      } else {
+        points -= 20; // below the stated floor — push down, don't hide
+      }
+    }
+
+    if (parsed.entryLevel && job.seniority === 'Entry level') {
+      points += 16;
+      reasons.push('Open to entry level / limited experience');
+    }
+
+    if (job.industry && mentionedIndustries.includes(job.industry)) {
+      points += 20;
+      reasons.push(`In ${job.industry}`);
+    }
+
+    // Gentle interest/skill boost (bonus only).
+    const kwHit = [...job.requiredSkills, job.industry ?? ''].some((s) =>
+      softKeywords.has(s.toLowerCase()),
+    );
+    if (kwHit) {
+      points += 6;
+      reasons.push('Matches your interests');
+    }
+
+    // Generic "people person / good with people" signal → people-facing roles.
+    if (
+      /people|helping|customer|hospitality|care|teach/.test(lower) &&
+      /Customer Service|Sales|Hospitality & Restaurants|Healthcare & Medical|Education|Human Resources/.test(
+        job.industry ?? '',
+      )
+    ) {
+      points += 12;
+      reasons.push('People-facing role');
+    }
+
+    if (reasons.length === 0) reasons.push('Open role on TALORAX');
+
+    results.push({
+      opportunityId: job.id,
+      score: Math.max(35, Math.min(98, points)),
+      reasons,
+    });
+  }
+
+  return results.sort((a, b) => b.score - a.score);
+}

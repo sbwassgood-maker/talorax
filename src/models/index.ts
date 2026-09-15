@@ -173,10 +173,31 @@ export type OpportunityType =
   | 'Internship'
   | 'Freelance'
   | 'Contract'
+  | 'Temporary'
   | 'Collaboration'
   | 'Mentorship'
   | 'Cofounder'
   | 'Project';
+
+/**
+ * Employment ("Jobs") opportunity types — the ones that belong in the dedicated
+ * Jobs experience, as opposed to collaboration-style opportunities. Used to
+ * cleanly separate Jobs from Collabs without touching existing data shapes.
+ */
+export const JOB_TYPES: OpportunityType[] = [
+  'Full-time',
+  'Part-time',
+  'Contract',
+  'Temporary',
+  'Internship',
+  'Freelance',
+];
+
+export type Seniority =
+  | 'Entry level'
+  | 'Mid level'
+  | 'Senior level'
+  | 'Not specified';
 
 export type WorkMode = 'Remote' | 'Hybrid' | 'On-site';
 
@@ -188,6 +209,12 @@ export interface Opportunity {
   location: string;
   workMode: WorkMode;
   type: OpportunityType;
+  /** Industry (from the industry taxonomy). Optional for back-compat. */
+  industry?: string;
+  /** Seniority level for job listings. Optional for back-compat. */
+  seniority?: Seniority;
+  /** Optional numeric salary floor (USD/yr) to power salary-range filtering. */
+  salaryMin?: number;
   compensation?: string;
   shortDescription: string;
   description: string;
@@ -195,6 +222,11 @@ export interface Opportunity {
   requiredSkills: string[];
   teamMemberIds: ID[];
   createdAt: string;
+}
+
+/** True when an opportunity is an employment "Job" (vs a collaboration). */
+export function isJob(opp: Opportunity): boolean {
+  return JOB_TYPES.includes(opp.type);
 }
 
 // ---------------------------------------------------------------------------
