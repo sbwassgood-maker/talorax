@@ -26,7 +26,7 @@ export const communities: Community[] = [
       'A friendly space for IT students to ask questions, share projects, and find study buddies and internships.',
     topic: 'Information Technology',
     memberCount: 3560,
-    coverColor: '#7c3aed',
+    coverColor: '#0aa5e0',
   },
   {
     id: 'cm-entrepreneurs',

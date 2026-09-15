@@ -1,14 +1,16 @@
 import { Link } from 'react-router-dom';
 import { Avatar, Card, Tag } from '../ui';
 import { ConnectButton, FollowButton } from '../social/ConnectButton';
+import { WhyThis } from '../social/WhyThis';
 import type { User } from '../../models';
 import { fullName } from '../../data/users';
-import { mutualConnections } from '../../utils/matching';
+import { mutualConnections, scorePerson } from '../../utils/matching';
 import { useAuth } from '../../services/auth';
 
 export function PersonCard({ person }: { person: User }) {
   const { user } = useAuth();
   const mutual = user ? mutualConnections(user, person) : 0;
+  const rec = user ? scorePerson(user, person) : null;
   const chips = [...person.skills.slice(0, 2), ...person.interests.slice(0, 1)];
 
   return (
@@ -39,6 +41,10 @@ export function PersonCard({ person }: { person: User }) {
           ? `${mutual} mutual connection${mutual > 1 ? 's' : ''}`
           : 'Suggested for you'}
       </div>
+
+      {rec && (
+        <WhyThis score={rec.score} reasons={rec.reasons} variant="inline" />
+      )}
 
       <div className="tx-person__actions">
         <ConnectButton userId={person.id} block />

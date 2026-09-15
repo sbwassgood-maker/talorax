@@ -61,7 +61,7 @@ export const posts: Post[] = [
     likeCount: 56,
     commentCount: 8,
     shareCount: 11,
-    mediaColor: '#6d28d9',
+    mediaColor: '#101828',
     mediaLabel: 'Now Hiring',
   },
   {
@@ -123,7 +123,7 @@ export const posts: Post[] = [
     likeCount: 84,
     commentCount: 21,
     shareCount: 13,
-    mediaColor: '#7c3aed',
+    mediaColor: '#0aa5e0',
     mediaLabel: '▶ React Project Structure',
   },
 ];

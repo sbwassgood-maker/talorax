@@ -10,15 +10,42 @@ import { getCompanyById } from '../../data/companies';
 import { getOpportunityById } from '../../data/opportunities';
 import { timeAgo, compactNumber } from '../../utils/format';
 
-const TYPE_LABEL: Record<Post['type'], string> = {
-  text: 'Post',
-  project: 'Project',
-  company: 'Company',
-  opportunity: 'Opportunity',
-  learning: 'Learning',
-  collaboration: 'Collaboration',
-  video: 'Video',
+import { communities } from '../../data/communities';
+
+const TYPE_META: Record<
+  Post['type'],
+  { label: string; tone: 'primary' | 'neutral' | 'success' | 'warning'; icon: string }
+> = {
+  text: { label: 'Post', tone: 'neutral', icon: '💬' },
+  project: { label: 'Project', tone: 'primary', icon: '🚀' },
+  company: { label: 'Company', tone: 'warning', icon: '🏢' },
+  opportunity: { label: 'Opportunity', tone: 'success', icon: '💼' },
+  learning: { label: 'Learning', tone: 'primary', icon: '🎓' },
+  collaboration: { label: 'Collaboration', tone: 'success', icon: '🤝' },
+  video: { label: 'Video', tone: 'primary', icon: '▶' },
 };
+
+// The social-first idea: content should lead to people, communities, and
+// opportunities. Derive a couple of relevant, deterministic "discover next"
+// links from the post's topic so browsing naturally opens doors.
+function relatedFor(post: Post): { label: string; to: string }[] {
+  const links: { label: string; to: string }[] = [];
+  const text = `${post.content}`.toLowerCase();
+  const topical = communities.find((c) =>
+    text.includes(c.topic.toLowerCase().split(' ')[0]),
+  );
+  if (topical) links.push({ label: `#${topical.name}`, to: '/discover' });
+  if (post.type === 'collaboration' || post.type === 'project') {
+    links.push({ label: 'People building this', to: '/discover' });
+  }
+  if (post.type === 'opportunity') {
+    links.push({ label: 'Similar opportunities', to: '/opportunities' });
+  }
+  if (links.length === 0) {
+    links.push({ label: 'Discover related people', to: '/discover' });
+  }
+  return links.slice(0, 2);
+}
 
 export function PostCard({ post }: { post: Post }) {
   const {
@@ -59,7 +86,9 @@ export function PostCard({ post }: { post: Post }) {
           </div>
         </div>
         <div className="tx-post__type">
-          <Badge tone="neutral">{TYPE_LABEL[post.type]}</Badge>
+          <Badge tone={TYPE_META[post.type].tone}>
+            {TYPE_META[post.type].icon} {TYPE_META[post.type].label}
+          </Badge>
         </div>
       </div>
 
@@ -76,6 +105,16 @@ export function PostCard({ post }: { post: Post }) {
 
       {post.projectId && <ProjectEmbed projectId={post.projectId} />}
       {post.opportunityId && <OpportunityEmbed oppId={post.opportunityId} />}
+
+      {/* Social-first: every post opens a door to related discovery */}
+      <div className="tx-post__discover">
+        <span className="tx-post__discover-label">Discover next</span>
+        {relatedFor(post).map((r) => (
+          <Link key={r.label} to={r.to} className="tx-post__chip">
+            {r.label}
+          </Link>
+        ))}
+      </div>
 
       <div className="tx-post__meta" style={{ padding: '4px 2px' }}>
         {compactNumber(post.likeCount)} likes · {post.commentCount} comments ·{' '}

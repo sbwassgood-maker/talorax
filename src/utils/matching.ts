@@ -156,3 +156,77 @@ export function mutualConnections(user: User, other: User): number {
   return other.connectionIds.filter((id) => set.has(id) && id !== user.id)
     .length;
 }
+
+
+// ---------------------------------------------------------------------------
+// "People Who Need You" — two-directional discovery.
+// Surfaces people whose projects or posted opportunities call for skills the
+// current user already has, so opportunities can find the user (not just the
+// other way around). Rule-based and transparent.
+// ---------------------------------------------------------------------------
+
+import type { Project } from '../models';
+
+export interface PersonNeed {
+  needId: string; // stable id: person + source
+  personId: string;
+  need: string; // e.g. "React Developer" or "Python"
+  reason: string; // short human explanation
+  source: 'project' | 'opportunity';
+  sourceId: string;
+}
+
+// Loose mapping so a "seeking role" like "React Developer" can be matched to a
+// user's concrete skill ("React").
+function userMatchesNeed(userSkills: string[], need: string): boolean {
+  const lower = need.toLowerCase();
+  return userSkills.some((s) => lower.includes(s.toLowerCase()));
+}
+
+export function peopleWhoNeedYou(
+  user: User,
+  projects: Project[],
+  opportunities: Opportunity[],
+): PersonNeed[] {
+  const results: PersonNeed[] = [];
+  const seenPeople = new Set<string>();
+
+  // 1. Projects looking for collaborators in roles matching the user's skills.
+  for (const p of projects) {
+    if (p.creatorId === user.id) continue;
+    const roles = p.seekingRoles ?? [];
+    const matchedRole =
+      roles.find((r) => userMatchesNeed(user.skills, r)) ??
+      p.technologies.find((t) => user.skills.includes(t));
+    if (matchedRole && !seenPeople.has(p.creatorId)) {
+      seenPeople.add(p.creatorId);
+      results.push({
+        needId: `${p.creatorId}:project:${p.id}`,
+        personId: p.creatorId,
+        need: matchedRole,
+        reason: `Working on "${p.title}" and looking for your skills`,
+        source: 'project',
+        sourceId: p.id,
+      });
+    }
+  }
+
+  // 2. Opportunities posted by individuals whose required skills the user has.
+  for (const o of opportunities) {
+    if (!o.posterId || o.posterId === user.id) continue;
+    const matchedSkill = o.requiredSkills.find((s) => user.skills.includes(s));
+    if (matchedSkill && !seenPeople.has(o.posterId)) {
+      seenPeople.add(o.posterId);
+      results.push({
+        needId: `${o.posterId}:opportunity:${o.id}`,
+        personId: o.posterId,
+        need: matchedSkill,
+        reason: `Posted "${o.title}" needing ${matchedSkill}`,
+        source: 'opportunity',
+        sourceId: o.id,
+      });
+    }
+  }
+
+  return results;
+}

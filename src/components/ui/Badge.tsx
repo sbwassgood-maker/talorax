@@ -44,7 +44,10 @@ export function Tag({
 export function MatchPill({ score }: { score: number }) {
   return (
     <span className="tx-match" title={`${score}% match`}>
-      ● {score}% Match
+      <span style={{ color: 'var(--brand-cyan)' }} aria-hidden="true">
+        ●
+      </span>{' '}
+      {score}% Match
     </span>
   );
 }

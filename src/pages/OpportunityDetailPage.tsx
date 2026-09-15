@@ -1,6 +1,7 @@
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import './pages.css';
 import { Avatar, Badge, Button, Card, MatchPill, Tag } from '../components/ui';
+import { WhyThis } from '../components/social/WhyThis';
 import { useAppState } from '../services/appState';
 import { useAuth } from '../services/auth';
 import { getCompanyById } from '../data/companies';
@@ -143,21 +144,7 @@ export function OpportunityDetailPage() {
             </Button>
           </Card>
 
-          <div className="tx-why">
-            <div className="tx-why__head">
-              <MatchPill score={rec.score} />
-              <strong>Why you're seeing this</strong>
-            </div>
-            <ul>
-              {rec.reasons.map((r) => (
-                <li key={r}>{r}</li>
-              ))}
-            </ul>
-            <div className="tx-why__note">
-              Matches are calculated with simple, transparent rules based on your
-              profile — not an automated AI engine.
-            </div>
-          </div>
+          <WhyThis score={rec.score} reasons={rec.reasons} />
 
           {company && (
             <Card>

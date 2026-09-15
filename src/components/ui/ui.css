@@ -55,10 +55,21 @@
 
 .tx-btn--subtle {
   background: var(--color-primary-soft);
-  color: var(--color-primary);
+  color: var(--color-primary-hover);
 }
 .tx-btn--subtle:hover:not(:disabled) {
-  background: #e0d8fb;
+  background: var(--color-primary-soft);
+  filter: brightness(0.96);
+}
+
+/* Signature yellow CTA — used sparingly for standout actions (e.g. Connect) */
+.tx-btn--highlight {
+  background: var(--color-highlight);
+  color: var(--color-highlight-ink);
+  font-weight: 700;
+}
+.tx-btn--highlight:hover:not(:disabled) {
+  filter: brightness(0.96);
 }
 
 .tx-btn--danger {
@@ -168,15 +179,15 @@
   color: #fff;
 }
 
-/* ---- Match ring / pill ---- */
+/* ---- Match ring / pill — a signature TALORAX moment (navy + cyan) ---- */
 .tx-match {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-weight: 700;
   font-size: 13px;
-  color: var(--color-success);
-  background: #d1fae5;
+  color: var(--color-text-invert);
+  background: var(--brand-navy);
   padding: 4px 11px;
   border-radius: var(--radius-pill);
 }

@@ -1,0 +1,78 @@
+/* "Why am I seeing this?" transparency component
+   ========================================================================== */
+
+/* ---- Panel variant (detail pages) ---- */
+.tx-why {
+  background: var(--color-primary-softer);
+  border: 1px solid var(--color-primary-soft);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+.tx-why__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.tx-why ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tx-why li {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+}
+.tx-why li::before {
+  content: '●';
+  color: var(--color-primary);
+  font-size: 10px;
+  margin-top: 5px;
+}
+.tx-why__note {
+  font-size: 12px;
+  color: var(--color-text-faint);
+  margin-top: 12px;
+  font-style: italic;
+}
+
+/* ---- Inline variant (cards) ---- */
+.tx-why-inline {
+  margin-bottom: 12px;
+}
+.tx-why-inline__toggle {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-primary-hover);
+  cursor: pointer;
+}
+.tx-why-inline__toggle:hover {
+  text-decoration: underline;
+}
+.tx-why-inline__body {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--color-primary-softer);
+  border: 1px solid var(--color-primary-soft);
+  border-radius: var(--radius-md);
+}
+.tx-why-inline__body ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tx-why-inline__body li {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+}
+.tx-why-inline__body li::before {
+  content: '●';
+  color: var(--color-primary);
+  font-size: 9px;
+  margin-top: 5px;
+}

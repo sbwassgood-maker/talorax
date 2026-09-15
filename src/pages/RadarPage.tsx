@@ -3,12 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 import './pages.css';
 import { Avatar, Button, Card, MatchPill, Tag } from '../components/ui';
 import { ConnectButton } from '../components/social/ConnectButton';
+import { ICanHelpButton } from '../components/social/ICanHelpButton';
 import { useAuth } from '../services/auth';
 import { useAppState } from '../services/appState';
 import { users, fullName } from '../data/users';
 import { getCompanyById } from '../data/companies';
 import { getUserById } from '../data/users';
-import { scoreOpportunity, scorePerson } from '../utils/matching';
+import {
+  scoreOpportunity,
+  scorePerson,
+  peopleWhoNeedYou,
+} from '../utils/matching';
 import type { SkillGap } from '../models';
 
 // A small, deterministic set of "next skills" mapped to how many opportunities
@@ -48,6 +53,11 @@ export function RadarPage() {
   const projectsToJoin = projects
     .filter((p) => p.status === 'Looking for collaborators')
     .slice(0, 3);
+
+  const needYou = useMemo(
+    () => (user ? peopleWhoNeedYou(user, projects, opportunities).slice(0, 4) : []),
+    [user, projects, opportunities],
+  );
 
   if (!user) return null;
   const skillGaps = computeSkillGaps(user.skills);
@@ -133,6 +143,45 @@ export function RadarPage() {
           ))}
         </Card>
       </section>
+
+      {/* People who need you — two-directional discovery */}
+      {needYou.length > 0 && (
+        <section className="tx-radar-section">
+          <h2 className="tx-section-title">People who need your skills</h2>
+          <p className="tx-section-sub">
+            Opportunities can find you too — these people are looking for what
+            you can do.
+          </p>
+          <Card>
+            {needYou.map((n) => {
+              const person = getUserById(n.personId);
+              if (!person) return null;
+              return (
+                <div className="tx-radar-row" key={n.needId}>
+                  <div className="row" style={{ gap: 12, minWidth: 0 }}>
+                    <Avatar name={fullName(person)} size={44} />
+                    <div style={{ minWidth: 0 }}>
+                      <Link
+                        to={`/profile/${person.id}`}
+                        style={{ fontWeight: 700 }}
+                      >
+                        {fullName(person)}
+                      </Link>
+                      <div className="text-muted" style={{ fontSize: 13 }}>
+                        Needs <strong>{n.need}</strong> · {n.reason}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="row" style={{ gap: 8 }}>
+                    <ICanHelpButton needId={n.needId} />
+                    <ConnectButton userId={person.id} />
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        </section>
+      )}
 
       {/* Projects you could join */}
       <section className="tx-radar-section">

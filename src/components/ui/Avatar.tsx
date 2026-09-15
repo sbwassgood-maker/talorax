@@ -6,15 +6,17 @@ interface AvatarProps {
 }
 
 // Deterministic color from a name so avatars are stable across renders.
+// Leads with the TALORAX brand hues, with enough variety to keep avatars
+// visually distinct across the app.
 const PALETTE = [
-  '#6d28d9',
-  '#2563eb',
-  '#dc2626',
-  '#059669',
-  '#d97706',
-  '#db2777',
-  '#0891b2',
-  '#7c3aed',
+  '#101828', // navy
+  '#0aa5e0', // cyan
+  '#2563eb', // blue
+  '#0a9d68', // green
+  '#d9880a', // amber
+  '#db2777', // pink
+  '#0891b2', // teal
+  '#3d2f8c', // indigo
 ];
 
 function colorFromName(name: string): string {

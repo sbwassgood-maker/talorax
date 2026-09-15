@@ -35,6 +35,7 @@ interface AppStateValue {
   savedOpportunityIds: Set<string>;
   interestedOpportunityIds: Set<string>;
   followedUserIds: Set<string>;
+  helpOfferedIds: Set<string>;
   connectionStatus: Record<string, ConnectionStatus>;
 
   toggleLike: (postId: string) => void;
@@ -45,6 +46,9 @@ interface AppStateValue {
   requestConnection: (userId: string) => void;
   getConnectionStatus: (userId: string) => ConnectionStatus;
   isFollowing: (userId: string) => boolean;
+  /** Record that the current user offered to help with a "need" (person+role). */
+  offerHelp: (needId: string) => void;
+  hasOfferedHelp: (needId: string) => boolean;
 
   addPost: (post: Post) => void;
   addProject: (project: Project) => void;
@@ -81,6 +85,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [followedUserIds, setFollowedUserIds] = useState<Set<string>>(
     new Set(['u-carlos']),
   );
+  const [helpOfferedIds, setHelpOfferedIds] = useState<Set<string>>(new Set());
   const [connectionStatus, setConnectionStatus] = useState<
     Record<string, ConnectionStatus>
   >(seedConnectionStatus);
@@ -128,6 +133,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     (userId: string) => toggleInSet(setFollowedUserIds, userId),
     [],
   );
+  const offerHelp = useCallback((needId: string) => {
+    setHelpOfferedIds((prev) => new Set(prev).add(needId));
+  }, []);
 
   const requestConnection = useCallback((userId: string) => {
     setConnectionStatus((prev) => {
@@ -144,6 +152,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const isFollowing = useCallback(
     (userId: string) => followedUserIds.has(userId),
     [followedUserIds],
+  );
+  const hasOfferedHelp = useCallback(
+    (needId: string) => helpOfferedIds.has(needId),
+    [helpOfferedIds],
   );
 
   const addPost = useCallback(
@@ -189,6 +201,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       savedOpportunityIds,
       interestedOpportunityIds,
       followedUserIds,
+      helpOfferedIds,
       connectionStatus,
       toggleLike,
       toggleSavePost,
@@ -198,6 +211,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       requestConnection,
       getConnectionStatus,
       isFollowing,
+      offerHelp,
+      hasOfferedHelp,
       addPost,
       addProject,
       addOpportunity,
@@ -213,6 +228,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       savedOpportunityIds,
       interestedOpportunityIds,
       followedUserIds,
+      helpOfferedIds,
       connectionStatus,
       toggleLike,
       toggleSavePost,
@@ -222,6 +238,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       requestConnection,
       getConnectionStatus,
       isFollowing,
+      offerHelp,
+      hasOfferedHelp,
       addPost,
       addProject,
       addOpportunity,

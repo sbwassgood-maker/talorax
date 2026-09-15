@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import './pages.css';
-import { Avatar, Card } from '../components/ui';
+import { Avatar, Card, Tag, EmptyState } from '../components/ui';
 import { PostCard } from '../components/content/PostCard';
 import { useAppState } from '../services/appState';
 import { useAuth } from '../services/auth';
@@ -12,13 +13,32 @@ import { getCompanyById } from '../data/companies';
 import { scoreOpportunity } from '../utils/matching';
 import { communities } from '../data/communities';
 import { compactNumber } from '../utils/format';
+import type { Post } from '../models';
+
+// Lightweight feed filters so the feed reads like a modern social feed the
+// user can steer — not a static list. Maps a filter to the post types it shows.
+const FEED_FILTERS: { label: string; types: Post['type'][] | 'all' }[] = [
+  { label: 'For You', types: 'all' },
+  { label: 'Projects', types: ['project', 'collaboration'] },
+  { label: 'Opportunities', types: ['opportunity', 'company'] },
+  { label: 'Learning', types: ['learning', 'video'] },
+  { label: 'Discussions', types: ['text'] },
+];
 
 export function HomePage() {
   const { user } = useAuth();
   const { posts } = useAppState();
   const { open } = useCreateFlow();
+  const [filter, setFilter] = useState('For You');
 
   if (!user) return null;
+
+  const activeFilter =
+    FEED_FILTERS.find((f) => f.label === filter) ?? FEED_FILTERS[0];
+  const visiblePosts =
+    activeFilter.types === 'all'
+      ? posts
+      : posts.filter((p) => (activeFilter.types as Post['type'][]).includes(p.type));
 
   // Top matched opportunities for the sidebar.
   const topOpps = [...opportunities]
@@ -58,13 +78,31 @@ export function HomePage() {
             </div>
           </Card>
 
-          <h2 className="tx-section-title" style={{ margin: '22px 0 12px' }}>
-            For You
-          </h2>
+          <div
+            className="tx-feed-filters"
+            role="tablist"
+            aria-label="Feed filters"
+          >
+            {FEED_FILTERS.map((f) => (
+              <Tag
+                key={f.label}
+                selected={filter === f.label}
+                onClick={() => setFilter(f.label)}
+              >
+                {f.label}
+              </Tag>
+            ))}
+          </div>
 
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
+          {visiblePosts.length > 0 ? (
+            visiblePosts.map((post) => <PostCard key={post.id} post={post} />)
+          ) : (
+            <EmptyState
+              icon="🗒️"
+              title="Nothing here yet"
+              message="No posts match this filter right now. Try another, or share something yourself."
+            />
+          )}
         </div>
 
         {/* Sidebar */}
